@@ -21,12 +21,12 @@ import contextlib
 with contextlib.suppress(ImportError):
     from ._torch import Dense, TorchSurrogate, train_torch_surrogate
 
-from ._poly import PolySurrogate, train_series_surrogate
+from ._poly import PolySurrogate, train_polynomial_surrogate
 
 __all__ = [
     "Dense",
     "PolySurrogate",
     "TorchSurrogate",
-    "train_series_surrogate",
+    "train_polynomial_surrogate",
     "train_torch_surrogate",
 ]

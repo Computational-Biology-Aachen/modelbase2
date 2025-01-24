@@ -8,15 +8,10 @@ from typing import Union
 
 from modelbase2.types import AbstractSurrogate, ArrayLike
 
-__all__ = [
-    "PolySurrogate",
-    "PolynomialType",
-    "SeriesExpansion",
-    "train_series_surrogate",
-]
+__all__ = ["PolySurrogate", "PolynomialExpansion", "train_polynomial_surrogate"]
 
 # define custom type #TODO think about
-SeriesExpansion = PolynomialType = (
+PolynomialExpansion = (
     polynomial.polynomial.Polynomial
     | polynomial.chebyshev.Chebyshev
     | polynomial.legendre.Legendre
@@ -28,13 +23,13 @@ SeriesExpansion = PolynomialType = (
 
 @dataclass(kw_only=True)
 class PolySurrogate(AbstractSurrogate):
-    model: SeriesExpansion
+    model: PolynomialExpansion
 
     def predict_raw(self, y: np.ndarray) -> np.ndarray:
         return self.model(y)
 
 
-def train_series_surrogate(
+def train_polynomial_surrogate(
     feature: ArrayLike,
     target: ArrayLike,
     series: str = "Power",
