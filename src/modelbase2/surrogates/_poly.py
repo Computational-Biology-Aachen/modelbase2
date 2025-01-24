@@ -10,7 +10,7 @@ from modelbase2.types import AbstractSurrogate, ArrayLike
 
 __all__ = ["PolySurrogate", "PolynomialExpansion", "train_polynomial_surrogate"]
 
-# define custom type #TODO think about
+# define custom type
 PolynomialExpansion = (
     polynomial.polynomial.Polynomial
     | polynomial.chebyshev.Chebyshev
@@ -42,6 +42,7 @@ def train_polynomial_surrogate(
     Args:
         feature: Input data as a numpy array.
         target: Output data as a numpy array.
+        series: Base functions for the surrogate model
         degrees: Degrees of the polynomial to fit to the data.
         surrogate_args: Additional arguments for the surrogate model.
         surrogate_stoichiometries: Stoichiometries for the surrogate model.
