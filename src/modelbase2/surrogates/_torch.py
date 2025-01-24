@@ -8,10 +8,9 @@ from torch import nn
 from torch.optim.adam import Adam
 
 from modelbase2.types import AbstractSurrogate
+from modelbase2.nnarchitectures import MLP, DefaultDevice
 
-__all__ = ["DefaultDevice", "Dense", "TorchSurrogate", "train_torch_surrogate"]
-
-DefaultDevice = torch.device("cpu")
+__all__ = ["TorchSurrogate", "train_torch_surrogate"]
 
 
 @dataclass(kw_only=True)
@@ -42,63 +41,6 @@ class TorchSurrogate(AbstractSurrogate):
             return self.model(
                 torch.tensor(y, dtype=torch.float32),
             ).numpy()
-
-
-class Dense(nn.Module):
-    """Neural network approximator for surrogate modeling.
-
-    Attributes:
-        net: Sequential neural network model.
-
-    Methods:
-        forward: Forward pass through the neural network.
-
-    """
-
-    def __init__(self, n_inputs: int, n_outputs: int) -> None:
-        """Initializes the surrogate model with the given number of inputs and outputs.
-
-        Args:
-            n_inputs (int): The number of input features.
-            n_outputs (int): The number of output features.
-
-        Initializes a neural network with the following architecture:
-        - Linear layer with `n_inputs` inputs and 50 outputs
-        - ReLU activation
-        - Linear layer with 50 inputs and 50 outputs
-        - ReLU activation
-        - Linear layer with 50 inputs and `n_outputs` outputs
-
-        The weights of the linear layers are initialized with a normal distribution
-        (mean=0, std=0.1) and the biases are initialized to 0.
-
-        """
-        super().__init__()
-
-        self.net = nn.Sequential(
-            nn.Linear(n_inputs, 50),
-            nn.ReLU(),
-            nn.Linear(50, 50),
-            nn.ReLU(),
-            nn.Linear(50, n_outputs),
-        )
-
-        for m in self.net.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, mean=0, std=0.1)
-                nn.init.constant_(m.bias, val=0)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass through the neural network.
-
-        Args:
-            x: Input tensor.
-
-        Returns:
-            torch.Tensor: Output tensor.
-
-        """
-        return self.net(x)
 
 
 def _train_batched(
@@ -205,7 +147,7 @@ def train_torch_surrogate(
         surrogate_args: List of input variable names for the surrogate model.
         surrogate_stoichiometries: Dictionary mapping reaction names to stoichiometries.
         batch_size: Size of mini-batches for training (None for full-batch).
-        approximator: Predefined neural network model (None to use default).
+        approximator: Predefined neural network model (None to use default MLP features-50-50-output).
         optimimzer_cls: Optimizer class to use for training (default: Adam).
         device: Device to run the training on (default: DefaultDevice).
 
@@ -214,9 +156,9 @@ def train_torch_surrogate(
 
     """
     if approximator is None:
-        approximator = Dense(
+        approximator = MLP(
             n_inputs=len(features.columns),
-            n_outputs=len(targets.columns),
+            layers=[50, 50, len(targets.columns)],
         ).to(device)
 
     optimizer = optimimzer_cls(approximator.parameters())
