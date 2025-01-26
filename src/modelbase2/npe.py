@@ -4,10 +4,6 @@ This module provides classes and functions for training neural network models to
 parameters in metabolic models. It includes functionality for both steady-state and
 time-series data.
 
-Classes:
-    DefaultSSAproximator: Default neural network model for steady-state approximation
-    DefaultTimeSeriesApproximator: Default neural network model for time-series approximation
-
 Functions:
     train_torch_surrogate: Train a PyTorch surrogate model
     train_torch_time_course_estimator: Train a PyTorch time course estimator
@@ -18,9 +14,6 @@ from __future__ import annotations
 __all__ = [
     "AbstractEstimator",
     "DefaultCache",
-    "DefaultDevice",
-    "DefaultSSAproximator",
-    "DefaultTimeSeriesApproximator",
     "TorchSSEstimator",
     "TorchTimeCourseEstimator",
     "train_torch_ss_estimator",
@@ -39,75 +32,10 @@ import tqdm
 from torch import nn
 from torch.optim.adam import Adam
 
+from modelbase2.nnarchitectures import MLP, DefaultDevice, LSTMnn
 from modelbase2.parallel import Cache
 
-DefaultDevice = torch.device("cpu")
 DefaultCache = Cache(Path(".cache"))
-
-
-class DefaultSSAproximator(nn.Module):
-    """Default neural network model for steady-state approximation."""
-
-    def __init__(self, n_inputs: int, n_outputs: int, n_hidden: int = 50) -> None:
-        """Initializes the neural network with the specified number of inputs and outputs.
-
-        Args:
-            n_inputs (int): The number of input features.
-            n_outputs (int): The number of output features.
-            n_hidden (int): The number of hidden units in the fully connected layers
-
-        The network consists of three fully connected layers with ReLU activations in between.
-        The weights of the linear layers are initialized with a normal distribution (mean=0, std=0.1),
-        and the biases are initialized to zero.
-
-        """
-        super().__init__()
-
-        self.net = nn.Sequential(
-            nn.Linear(n_inputs, n_hidden),
-            nn.ReLU(),
-            nn.Linear(n_hidden, n_hidden),
-            nn.ReLU(),
-            nn.Linear(n_hidden, n_outputs),
-        )
-
-        for m in self.net.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, mean=0, std=0.1)
-                nn.init.constant_(m.bias, val=0)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass through the neural network."""
-        return cast(torch.Tensor, self.net(x))
-
-
-class DefaultTimeSeriesApproximator(nn.Module):
-    """Default neural network model for time-series approximation."""
-
-    def __init__(self, n_inputs: int, n_outputs: int, n_hidden: int) -> None:
-        """Initializes the neural network model.
-
-        Args:
-            n_inputs (int): Number of input features.
-            n_outputs (int): Number of output features.
-            n_hidden (int): Number of hidden units in the LSTM layer.
-
-        """
-        super().__init__()
-
-        self.n_hidden = n_hidden
-
-        self.lstm = nn.LSTM(n_inputs, n_hidden)
-        self.to_out = nn.Linear(n_hidden, n_outputs)
-
-        nn.init.normal_(self.to_out.weight, mean=0, std=0.1)
-        nn.init.constant_(self.to_out.bias, val=0)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass through the neural network."""
-        # lstm_out, (hidden_state, cell_state)
-        _, (hn, _) = self.lstm(x)
-        return cast(torch.Tensor, self.to_out(hn[-1]))  # Use last hidden state
 
 
 @dataclass(kw_only=True)
@@ -229,7 +157,7 @@ def train_torch_ss_estimator(
         targets: DataFrame containing the target values for training
         epochs: Number of training epochs
         batch_size: Size of mini-batches for training (None for full-batch)
-        approximator: Predefined neural network model (None to use default)
+        approximator: Predefined neural network model (None to use default MLP)
         optimimzer_cls: Optimizer class to use for training (default: Adam)
         device: Device to run the training on (default: DefaultDevice)
 
@@ -238,10 +166,10 @@ def train_torch_ss_estimator(
 
     """
     if approximator is None:
-        approximator = DefaultSSAproximator(
-            n_inputs=len(features.columns),
-            n_outputs=len(targets.columns),
-            n_hidden=max(2 * len(features.columns) * len(targets.columns), 10),
+        n_hidden = max(2 * len(features.columns) * len(targets.columns), 10)
+        n_outputs = len(targets.columns)
+        approximator = MLP(
+            n_inputs=len(features.columns), layers=[n_hidden, n_hidden, n_outputs]
         ).to(device)
 
     features_ = torch.Tensor(features.to_numpy(), device=device)
@@ -295,7 +223,7 @@ def train_torch_time_course_estimator(
         targets: DataFrame containing the target values for training
         epochs: Number of training epochs
         batch_size: Size of mini-batches for training (None for full-batch)
-        approximator: Predefined neural network model (None to use default)
+        approximator: Predefined neural network model (None to use default LSTM)
         optimimzer_cls: Optimizer class to use for training (default: Adam)
         device: Device to run the training on (default: DefaultDevice)
 
@@ -304,7 +232,7 @@ def train_torch_time_course_estimator(
 
     """
     if approximator is None:
-        approximator = DefaultTimeSeriesApproximator(
+        approximator = LSTMnn(
             n_inputs=len(features.columns),
             n_outputs=len(targets.columns),
             n_hidden=1,

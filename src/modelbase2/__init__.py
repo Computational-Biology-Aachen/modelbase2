@@ -53,6 +53,7 @@ __all__ = [
     "make_protocol",
     "mc",
     "mca",
+    "nnarchitectures",
     "plot",
     "sbml",
     "steady_state",
@@ -70,7 +71,17 @@ import pandas as pd
 if TYPE_CHECKING:
     from modelbase2.types import ArrayLike
 
-from . import distributions, experimental, fit, mc, mca, plot, sbml, surrogates
+from . import (
+    distributions,
+    experimental,
+    fit,
+    mc,
+    mca,
+    nnarchitectures,
+    plot,
+    sbml,
+    surrogates,
+)
 from .integrators import DefaultIntegrator, Scipy
 from .label_map import LabelMapper
 from .linear_label_map import LinearLabelMapper
