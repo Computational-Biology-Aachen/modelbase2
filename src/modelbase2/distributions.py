@@ -7,6 +7,7 @@ Classes:
     Distribution (Protocol): Base protocol for all distribution classes
     Beta: Beta distribution for parameters bounded between 0 and 1
     Uniform: Uniform distribution for parameters with simple bounds
+    LogUniform: LogUniform distribution for parameters with simple bounds
     Normal: Normal (Gaussian) distribution for unbounded parameters
     LogNormal: Log-normal distribution for strictly positive parameters
     Skewnorm: Skewed normal distribution for asymmetric parameter distributions
@@ -35,6 +36,7 @@ __all__ = [
     "Distribution",
     "GaussianKde",
     "LogNormal",
+    "LogUniform",
     "Normal",
     "RNG",
     "Skewnorm",
@@ -119,6 +121,34 @@ class Uniform:
         if rng is None:
             rng = RNG
         return rng.uniform(self.lower_bound, self.upper_bound, num)
+
+
+@dataclass
+class LogUniform:
+    """LogUniform distribution for parameters with simple bounds.
+
+    Args:
+        lower_bound: Minimum value
+        upper_bound: Maximum value
+
+    """
+
+    lower_bound: float
+    upper_bound: float
+
+    def sample(self, num: int, rng: np.random.Generator | None = None) -> Array:
+        """Generate random samples from the loguniform distribution.
+
+        Args:
+            num: Number of samples to generate
+            rng: Random number generator
+
+        """
+        if rng is None:
+            rng = RNG
+        return stats.loguniform.rvs(
+            self.lower_bound, self.upper_bound, size=num, random_state=rng
+        )
 
 
 @dataclass
