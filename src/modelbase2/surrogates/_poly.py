@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from numpy import polynomial
-from typing import Union
+from typing import Union, Literal
 
 from modelbase2.types import AbstractSurrogate, ArrayLike
 
