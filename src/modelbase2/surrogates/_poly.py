@@ -32,7 +32,7 @@ class PolySurrogate(AbstractSurrogate):
 def train_polynomial_surrogate(
     feature: ArrayLike,
     target: ArrayLike,
-    series: str = "Power",
+    series: Literal["Power", "Chebyshev", "Legendre", "Laguerre", "Hermite", "HermiteE"] = "Power",
     degrees: Iterable[int] = (1, 2, 3, 4, 5, 6, 7),
     surrogate_args: list[str] | None = None,
     surrogate_stoichiometries: dict[str, dict[str, float]] | None = None,
