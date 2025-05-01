@@ -2410,7 +2410,7 @@ Variables
 {'S': 0, 'P': 0}
 
 Reactions
-{'v0': Reaction(name='v0', fn=&lt;function constant at 0x7f78a2f80d60&gt;, stoichiometry={'S': 1}, args=['k_in']), 'v1': Reaction(name='v1', fn=&lt;function proportional at 0x7f78a2f80e00&gt;, stoichiometry={'S': -1, 'P': 1}, args=['k_1', 'S']), 'v2': Reaction(name='v2', fn=&lt;function proportional at 0x7f78a2f80e00&gt;, stoichiometry={'P': -1}, args=['k_out', 'P'])}
+{'v0': Reaction(name='v0', fn=&lt;function constant at 0x7fbe0a588f40&gt;, stoichiometry={'S': 1}, args=['k_in']), 'v1': Reaction(name='v1', fn=&lt;function proportional at 0x7fbe0a588fe0&gt;, stoichiometry={'S': -1, 'P': 1}, args=['k_1', 'S']), 'v2': Reaction(name='v2', fn=&lt;function proportional at 0x7fbe0a588fe0&gt;, stoichiometry={'P': -1}, args=['k_out', 'P'])}
 
 </pre>
 </div>
@@ -2463,8 +2463,8 @@ Note that this returns a <strong>copy</strong> of the derived quantities, so edi
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[15]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>{'k_atp': Derived(name='k_atp', fn=&lt;function proportional at 0x7f78a2f80e00&gt;, args=['k_base', 'e0_atpase']),
- 'ADP': Derived(name='ADP', fn=&lt;function moiety_1 at 0x7f78a2d76200&gt;, args=['ATP', 'ATP_total'])}</pre>
+<pre>{'k_atp': Derived(name='k_atp', fn=&lt;function proportional at 0x7fbe0a588fe0&gt;, args=['k_base', 'e0_atpase']),
+ 'ADP': Derived(name='ADP', fn=&lt;function moiety_1 at 0x7fbe0a3a4b80&gt;, args=['ATP', 'ATP_total'])}</pre>
 </div>
 </div>
 </div>
@@ -3515,12 +3515,12 @@ print("Derived Variables:", m.derived_variables)</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Derived Parameters: {'x1d': Derived(name='x1d', fn=&lt;function constant at 0x7f78a2f80d60&gt;, args=['x1'])}
+<pre>Derived Parameters: {'x1d': Derived(name='x1d', fn=&lt;function constant at 0x7fbe0a588f40&gt;, args=['x1'])}
 Derived Variables: {}
 
 Making x1 dynamic
 Derived Parameters: {}
-Derived Variables: {'x1d': Derived(name='x1d', fn=&lt;function constant at 0x7f78a2f80d60&gt;, args=['x1'])}
+Derived Variables: {'x1d': Derived(name='x1d', fn=&lt;function constant at 0x7fbe0a588f40&gt;, args=['x1'])}
 </pre>
 </div>
 </div>
