@@ -38,7 +38,7 @@ def simple_model() -> Model:
 
 
 @pytest.fixture
-def mc_parameters() -> pd.DataFrame:
+def mc_to_scan() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "k1": [1.0, 1.1, 1.2],
@@ -59,7 +59,7 @@ def protocol() -> pd.DataFrame:
     )
 
 
-def test_steady_state(simple_model: Model, mc_parameters: pd.DataFrame) -> None:
+def test_steady_state(simple_model: Model, mc_to_scan: pd.DataFrame) -> None:
     with patch("mxlpy.mc.parallelise") as mock_parallelise:
         # Create mock concentration and flux results
         concs_results = {
@@ -85,7 +85,7 @@ def test_steady_state(simple_model: Model, mc_parameters: pd.DataFrame) -> None:
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.steady_state(simple_model, mc_parameters)
+        result = mc.steady_state(simple_model, mc_to_scan)
 
         # Verify the results
         assert isinstance(result, SteadyStates)
@@ -93,10 +93,10 @@ def test_steady_state(simple_model: Model, mc_parameters: pd.DataFrame) -> None:
         assert {idx[1] for idx in result.variables.index} == {"S", "P"}
         assert sorted({idx[0] for idx in result.fluxes.index}) == [0, 1, 2]
         assert {idx[1] for idx in result.fluxes.index} == {"v1", "v2"}
-        assert result.parameters.equals(mc_parameters)
+        assert result.parameters.equals(mc_to_scan)
 
 
-def test_time_course(simple_model: Model, mc_parameters: pd.DataFrame) -> None:
+def test_time_course(simple_model: Model, mc_to_scan: pd.DataFrame) -> None:
     time_points = np.linspace(0, 10, 5)
 
     with patch("mxlpy.mc.parallelise") as mock_parallelise:
@@ -133,18 +133,18 @@ def test_time_course(simple_model: Model, mc_parameters: pd.DataFrame) -> None:
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.time_course(simple_model, time_points, mc_parameters)
+        result = mc.time_course(simple_model, time_points, mc_to_scan)
 
         # Verify the results
         assert sorted({idx[0] for idx in result.variables.index}) == [0, 1, 2]
         assert {idx[1] for idx in result.variables.index} == {"S", "P"}
         assert sorted({idx[0] for idx in result.fluxes.index}) == [0, 1, 2]
         assert {idx[1] for idx in result.fluxes.index} == {"v1", "v2"}
-        assert result.parameters.equals(mc_parameters)
+        assert result.parameters.equals(mc_to_scan)
 
 
 def test_time_course_over_protocol(
-    simple_model: Model, mc_parameters: pd.DataFrame, protocol: pd.DataFrame
+    simple_model: Model, mc_to_scan: pd.DataFrame, protocol: pd.DataFrame
 ) -> None:
     with patch("mxlpy.mc.parallelise") as mock_parallelise:
         # Create mock time course data
@@ -182,18 +182,18 @@ def test_time_course_over_protocol(
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.time_course_over_protocol(simple_model, protocol, mc_parameters)
+        result = mc.time_course_over_protocol(simple_model, protocol, mc_to_scan)
 
         # Verify the results
         assert sorted({idx[0] for idx in result.variables.index}) == [0, 1, 2]
         assert {idx[1] for idx in result.variables.index} == {"S", "P"}
         assert sorted({idx[0] for idx in result.fluxes.index}) == [0, 1, 2]
         assert {idx[1] for idx in result.fluxes.index} == {"v1", "v2"}
-        assert result.parameters.equals(mc_parameters)
+        assert result.parameters.equals(mc_to_scan)
         assert result.protocol.equals(protocol)
 
 
-def test_scan_steady_state(simple_model: Model, mc_parameters: pd.DataFrame) -> None:
+def test_scan_steady_state(simple_model: Model, mc_to_scan: pd.DataFrame) -> None:
     scan_parameters = pd.DataFrame(
         {
             "k1": [0.5, 1.0, 1.5],
@@ -234,7 +234,7 @@ def test_scan_steady_state(simple_model: Model, mc_parameters: pd.DataFrame) -> 
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.scan_steady_state(simple_model, scan_parameters, mc_parameters)
+        result = mc.scan_steady_state(simple_model, scan_parameters, mc_to_scan)
 
         # Verify the results
         assert isinstance(result, McSteadyStates)
@@ -243,12 +243,10 @@ def test_scan_steady_state(simple_model: Model, mc_parameters: pd.DataFrame) -> 
         )  # MC parameter index and scan parameter index
         assert result.fluxes.index.nlevels == 2
         assert result.parameters.equals(scan_parameters)
-        assert result.mc_parameters.equals(mc_parameters)
+        assert result.mc_to_scan.equals(mc_to_scan)
 
 
-def test_variable_elasticities(
-    simple_model: Model, mc_parameters: pd.DataFrame
-) -> None:
+def test_variable_elasticities(simple_model: Model, mc_to_scan: pd.DataFrame) -> None:
     variables = ["S", "P"]
     concs = {"S": 5.0, "P": 5.0}
 
@@ -263,7 +261,12 @@ def test_variable_elasticities(
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.variable_elasticities(simple_model, variables, concs, mc_parameters)
+        result = mc.variable_elasticities(
+            simple_model,
+            to_scan=variables,
+            variables=concs,
+            mc_to_scan=mc_to_scan,
+        )
 
         # Verify the results
         assert isinstance(result, pd.DataFrame)
@@ -271,9 +274,7 @@ def test_variable_elasticities(
         assert list(result.columns) == variables
 
 
-def test_parameter_elasticities(
-    simple_model: Model, mc_parameters: pd.DataFrame
-) -> None:
+def test_parameter_elasticities(simple_model: Model, mc_to_scan: pd.DataFrame) -> None:
     parameters = ["k1", "k2"]
     concs = {"S": 5.0, "P": 5.0}
 
@@ -289,7 +290,10 @@ def test_parameter_elasticities(
 
         # Call the function
         result = mc.parameter_elasticities(
-            simple_model, parameters, concs, mc_parameters
+            simple_model,
+            to_scan=parameters,
+            variables=concs,
+            mc_to_scan=mc_to_scan,
         )
 
         # Verify the results
@@ -298,9 +302,7 @@ def test_parameter_elasticities(
         assert list(result.columns) == parameters
 
 
-def test_response_coefficients(
-    simple_model: Model, mc_parameters: pd.DataFrame
-) -> None:
+def test_response_coefficients(simple_model: Model, mc_to_scan: pd.DataFrame) -> None:
     parameters = ["k1", "k2"]
 
     with patch("mxlpy.mc.parallelise") as mock_parallelise:
@@ -328,7 +330,11 @@ def test_response_coefficients(
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.response_coefficients(simple_model, parameters, mc_parameters)
+        result = mc.response_coefficients(
+            simple_model,
+            to_scan=parameters,
+            mc_to_scan=mc_to_scan,
+        )
 
         # Verify the results
         assert isinstance(result, ResponseCoefficientsByPars)
@@ -338,4 +344,4 @@ def test_response_coefficients(
         assert list(result.variables.columns) == ["S", "P"]
         assert result.fluxes.index.nlevels == 2
         assert list(result.fluxes.columns) == ["v1", "v2"]
-        assert result.parameters.equals(mc_parameters)
+        assert result.parameters.equals(mc_to_scan)

@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 def mock_ss_worker(
     model: Model,  # noqa: ARG001
-    y0: dict[str, float] | None,  # noqa: ARG001
     *,
     rel_norm: bool,  # noqa: ARG001
     integrator: IntegratorType,  # noqa: ARG001
@@ -30,7 +29,6 @@ def mock_ss_worker(
 
 def mock_tc_worker(
     model: Model,  # noqa: ARG001
-    y0: dict[str, float] | None,  # noqa: ARG001
     time_points: Array,
     integrator: IntegratorType,  # noqa: ARG001
 ) -> TimeCourse:
@@ -42,7 +40,6 @@ def mock_tc_worker(
 
 def mock_protocol_worker(
     model: Model,  # noqa: ARG001
-    y0: dict[str, float] | None,  # noqa: ARG001
     protocol: pd.DataFrame,
     time_points_per_step: int = 10,  # noqa: ARG001
 ) -> TimeCourse:
@@ -56,7 +53,7 @@ def test_steady_state_1p() -> None:
     parameters = pd.DataFrame({"param1": [0.1]})
     result = steady_state(
         model=Model().add_parameters({"param1": 0.1}),
-        parameters=parameters,
+        to_scan=parameters,
         worker=mock_ss_worker,
         parallel=False,
     )
@@ -80,7 +77,7 @@ def test_steady_state_2p() -> None:
     parameters = pd.DataFrame({"param1": [0.1, 0.2], "param2": [0.3, 0.4]})
     result = steady_state(
         model=Model().add_parameters({"param1": 0.1, "param2": 0.2}),
-        parameters=parameters,
+        to_scan=parameters,
         worker=mock_ss_worker,
         parallel=False,
     )

@@ -46,8 +46,8 @@ if TYPE_CHECKING:
 def variable_elasticities(
     model: Model,
     *,
-    concs: dict[str, float] | None = None,
-    variables: list[str] | None = None,
+    to_scan: list[str] | None = None,
+    variables: dict[str, float] | None = None,
     time: float = 0,
     normalized: bool = True,
     displacement: float = 1e-4,
@@ -67,8 +67,8 @@ def variable_elasticities(
 
     Args:
         model: Metabolic model instance
-        concs: Initial concentrations {metabolite: value}. Uses model defaults if None
-        variables: List of variables to analyze. Uses all if None
+        to_scan: List of variables to analyze. Uses all if None
+        variables: Custom variable values. Defaults to initial conditions.
         time: Time point for evaluation
         normalized: Whether to normalize coefficients
         displacement: Relative perturbation size
@@ -77,23 +77,23 @@ def variable_elasticities(
         DataFrame with elasticity coefficients (reactions x metabolites)
 
     """
-    concs = model.get_initial_conditions() if concs is None else concs
-    variables = model.get_variable_names() if variables is None else variables
+    variables = model.get_initial_conditions() if variables is None else variables
+    to_scan = model.get_variable_names() if to_scan is None else to_scan
     elasticities = {}
 
-    for var in variables:
-        old = concs[var]
+    for var in to_scan:
+        old = variables[var]
 
         upper = model.get_fluxes(
-            variables=concs | {var: old * (1 + displacement)}, time=time
+            variables=variables | {var: old * (1 + displacement)}, time=time
         )
         lower = model.get_fluxes(
-            variables=concs | {var: old * (1 - displacement)}, time=time
+            variables=variables | {var: old * (1 - displacement)}, time=time
         )
 
         elasticity_coef = (upper - lower) / (2 * displacement * old)
         if normalized:
-            elasticity_coef *= old / model.get_fluxes(variables=concs, time=time)
+            elasticity_coef *= old / model.get_fluxes(variables=variables, time=time)
         elasticities[var] = elasticity_coef
 
     return pd.DataFrame(data=elasticities)
@@ -101,10 +101,10 @@ def variable_elasticities(
 
 def parameter_elasticities(
     model: Model,
-    parameters: list[str] | None = None,
-    concs: dict[str, float] | None = None,
-    time: float = 0,
     *,
+    to_scan: list[str] | None = None,
+    variables: dict[str, float] | None = None,
+    time: float = 0,
     normalized: bool = True,
     displacement: float = 1e-4,
 ) -> pd.DataFrame:
@@ -119,8 +119,8 @@ def parameter_elasticities(
 
     Args:
         model: Metabolic model instance
-        parameters: List of parameters to analyze. Uses all if None
-        concs: Initial concentrations {metabolite: value}. Uses model defaults if None
+        to_scan: List of parameters to analyze. Uses all if None
+        variables: Custom variable values. Defaults to initial conditions.
         time: Time point for evaluation
         normalized: Whether to normalize coefficients
         displacement: Relative perturbation size
@@ -129,26 +129,26 @@ def parameter_elasticities(
         DataFrame with parameter elasticities (reactions x parameters)
 
     """
-    concs = model.get_initial_conditions() if concs is None else concs
-    parameters = model.get_parameter_names() if parameters is None else parameters
+    variables = model.get_initial_conditions() if variables is None else variables
+    to_scan = model.get_parameter_names() if to_scan is None else to_scan
 
     elasticities = {}
 
-    concs = model.get_initial_conditions() if concs is None else concs
-    for par in parameters:
+    variables = model.get_initial_conditions() if variables is None else variables
+    for par in to_scan:
         old = model.parameters[par]
 
         model.update_parameters({par: old * (1 + displacement)})
-        upper = model.get_fluxes(variables=concs, time=time)
+        upper = model.get_fluxes(variables=variables, time=time)
 
         model.update_parameters({par: old * (1 - displacement)})
-        lower = model.get_fluxes(variables=concs, time=time)
+        lower = model.get_fluxes(variables=variables, time=time)
 
         # Reset
         model.update_parameters({par: old})
         elasticity_coef = (upper - lower) / (2 * displacement * old)
         if normalized:
-            elasticity_coef *= old / model.get_fluxes(variables=concs, time=time)
+            elasticity_coef *= old / model.get_fluxes(variables=variables, time=time)
         elasticities[par] = elasticity_coef
 
     return pd.DataFrame(data=elasticities)
@@ -194,11 +194,12 @@ def _response_coefficient_worker(
 
     """
     old = model.parameters[parameter]
+    if y0 is not None:
+        model.update_variables(y0)
 
     model.update_parameters({parameter: old * (1 + displacement)})
     upper = _steady_state_worker(
         model,
-        y0=y0,
         rel_norm=rel_norm,
         integrator=integrator,
     )
@@ -206,7 +207,6 @@ def _response_coefficient_worker(
     model.update_parameters({parameter: old * (1 - displacement)})
     lower = _steady_state_worker(
         model,
-        y0=y0,
         rel_norm=rel_norm,
         integrator=integrator,
     )
@@ -218,7 +218,6 @@ def _response_coefficient_worker(
     if normalized:
         norm = _steady_state_worker(
             model,
-            y0=y0,
             rel_norm=rel_norm,
             integrator=integrator,
         )
@@ -229,9 +228,9 @@ def _response_coefficient_worker(
 
 def response_coefficients(
     model: Model,
-    parameters: list[str] | None = None,
+    to_scan: list[str] | None = None,
     *,
-    y0: dict[str, float] | None = None,
+    variables: dict[str, float] | None = None,
     normalized: bool = True,
     displacement: float = 1e-4,
     disable_tqdm: bool = False,
@@ -250,8 +249,8 @@ def response_coefficients(
 
     Args:
         model: Metabolic model instance
-        parameters: Parameters to analyze. Uses all if None
-        y0: Initial conditions as a dictionary {species: value}
+        to_scan: Parameters to analyze. Uses all if None
+        variables: Custom variable values. Defaults to initial conditions.
         normalized: Whether to normalize coefficients
         displacement: Relative perturbation size
         disable_tqdm: Disable progress bar
@@ -266,19 +265,19 @@ def response_coefficients(
         - Concentration response coefficients
 
     """
-    parameters = model.get_parameter_names() if parameters is None else parameters
+    to_scan = model.get_parameter_names() if to_scan is None else to_scan
 
     res = parallelise(
         partial(
             _response_coefficient_worker,
             model=model,
-            y0=y0,
+            y0=variables,
             normalized=normalized,
             displacement=displacement,
             rel_norm=rel_norm,
             integrator=integrator,
         ),
-        inputs=list(zip(parameters, parameters, strict=True)),
+        inputs=list(zip(to_scan, to_scan, strict=True)),
         cache=None,
         disable_tqdm=disable_tqdm,
         parallel=parallel,

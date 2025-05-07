@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from mxlpy.types import Array
 
 
-def _update_parameters_and[T](
+def _update_parameters_and_initial_conditions[T](
     pars: pd.Series,
     fn: Callable[[Model], T],
     model: Model,
@@ -67,7 +67,9 @@ def _update_parameters_and[T](
         Result of the function execution.
 
     """
-    model.update_parameters(pars.to_dict())
+    pd = pars.to_dict()
+    model.update_variables({k: v for k, v in pd.items() if k in model._variables})  # noqa: SLF001
+    model.update_parameters({k: v for k, v in pd.items() if k in model._parameters})  # noqa: SLF001
     return fn(model)
 
 
@@ -282,7 +284,6 @@ class SteadyStateWorker(Protocol):
     def __call__(
         self,
         model: Model,
-        y0: dict[str, float] | None,
         *,
         rel_norm: bool,
         integrator: IntegratorType,
@@ -297,7 +298,6 @@ class TimeCourseWorker(Protocol):
     def __call__(
         self,
         model: Model,
-        y0: dict[str, float] | None,
         time_points: Array,
         *,
         integrator: IntegratorType,
@@ -312,7 +312,6 @@ class ProtocolWorker(Protocol):
     def __call__(
         self,
         model: Model,
-        y0: dict[str, float] | None,
         protocol: pd.DataFrame,
         *,
         integrator: IntegratorType,
@@ -324,7 +323,6 @@ class ProtocolWorker(Protocol):
 
 def _steady_state_worker(
     model: Model,
-    y0: dict[str, float] | None,
     *,
     rel_norm: bool,
     integrator: IntegratorType,
@@ -343,7 +341,7 @@ def _steady_state_worker(
     """
     try:
         res = (
-            Simulator(model, y0=y0, integrator=integrator)
+            Simulator(model, integrator=integrator)
             .simulate_to_steady_state(rel_norm=rel_norm)
             .get_result()
         )
@@ -354,7 +352,6 @@ def _steady_state_worker(
 
 def _time_course_worker(
     model: Model,
-    y0: dict[str, float] | None,
     time_points: Array,
     integrator: IntegratorType,
 ) -> TimeCourse:
@@ -372,7 +369,7 @@ def _time_course_worker(
     """
     try:
         res = (
-            Simulator(model, y0=y0, integrator=integrator)
+            Simulator(model, integrator=integrator)
             .simulate_time_course(time_points=time_points)
             .get_result()
         )
@@ -387,7 +384,6 @@ def _time_course_worker(
 
 def _protocol_worker(
     model: Model,
-    y0: dict[str, float] | None,
     protocol: pd.DataFrame,
     *,
     integrator: IntegratorType = DefaultIntegrator,
@@ -408,7 +404,7 @@ def _protocol_worker(
     """
     try:
         res = (
-            Simulator(model, y0=y0, integrator=integrator)
+            Simulator(model, integrator=integrator)
             .simulate_over_protocol(
                 protocol=protocol,
                 time_points_per_step=time_points_per_step,
@@ -432,7 +428,7 @@ def _protocol_worker(
 
 def steady_state(
     model: Model,
-    parameters: pd.DataFrame,
+    to_scan: pd.DataFrame,
     y0: dict[str, float] | None = None,
     *,
     parallel: bool = True,
@@ -441,11 +437,11 @@ def steady_state(
     worker: SteadyStateWorker = _steady_state_worker,
     integrator: IntegratorType = DefaultIntegrator,
 ) -> SteadyStates:
-    """Get steady-state results over supplied parameters.
+    """Get steady-state results over supplied values.
 
     Args:
         model: Model instance to simulate.
-        parameters: DataFrame containing parameter values to scan.
+        to_scan: DataFrame containing parameter or initial values to scan.
         y0: Initial conditions as a dictionary {variable: value}.
         parallel: Whether to execute in parallel (default: True).
         rel_norm: Whether to use relative normalization (default: False).
@@ -478,36 +474,38 @@ def steady_state(
         | (2, 4) | 0.5  |   2 |
 
     """
+    if y0 is not None:
+        model.update_variables(y0)
+
     res = parallelise(
         partial(
-            _update_parameters_and,
+            _update_parameters_and_initial_conditions,
             fn=partial(
                 worker,
-                y0=y0,
                 rel_norm=rel_norm,
                 integrator=integrator,
             ),
             model=model,
         ),
-        inputs=list(parameters.iterrows()),
+        inputs=list(to_scan.iterrows()),
         cache=cache,
         parallel=parallel,
     )
     concs = pd.DataFrame({k: v.variables.T for k, v in res.items()}).T
     fluxes = pd.DataFrame({k: v.fluxes.T for k, v in res.items()}).T
     idx = (
-        pd.Index(parameters.iloc[:, 0])
-        if parameters.shape[1] == 1
-        else pd.MultiIndex.from_frame(parameters)
+        pd.Index(to_scan.iloc[:, 0])
+        if to_scan.shape[1] == 1
+        else pd.MultiIndex.from_frame(to_scan)
     )
     concs.index = idx
     fluxes.index = idx
-    return SteadyStates(variables=concs, fluxes=fluxes, parameters=parameters)
+    return SteadyStates(variables=concs, fluxes=fluxes, parameters=to_scan)
 
 
 def time_course(
     model: Model,
-    parameters: pd.DataFrame,
+    to_scan: pd.DataFrame,
     time_points: Array,
     y0: dict[str, float] | None = None,
     *,
@@ -521,7 +519,7 @@ def time_course(
     Examples:
         >>> time_course(
         >>>     model,
-        >>>     parameters=pd.DataFrame({"k1": [1, 1.5, 2]}),
+        >>>     to_scan=pd.DataFrame({"k1": [1, 1.5, 2]}),
         >>>     time_points=np.linspace(0, 1, 3)
         >>> ).variables
 
@@ -539,7 +537,7 @@ def time_course(
 
         >>> time_course(
         >>>     model,
-        >>>     parameters=cartesian_product({"k1": [1, 2], "k2": [3, 4]}),
+        >>>     to_scan=cartesian_product({"k1": [1, 2], "k2": [3, 4]}),
         >>>     time_points=[0.0, 0.5, 1.0],
         >>> ).variables
 
@@ -553,7 +551,7 @@ def time_course(
 
     Args:
         model: Model instance to simulate.
-        parameters: DataFrame containing parameter values to scan.
+        to_scan: DataFrame containing parameter or initial values to scan.
         time_points: Array of time points for the simulation.
         y0: Initial conditions as a dictionary {variable: value}.
         cache: Optional cache to store and retrieve results.
@@ -566,25 +564,27 @@ def time_course(
 
 
     """
+    if y0 is not None:
+        model.update_variables(y0)
+
     res = parallelise(
         partial(
-            _update_parameters_and,
+            _update_parameters_and_initial_conditions,
             fn=partial(
                 worker,
                 time_points=time_points,
-                y0=y0,
                 integrator=integrator,
             ),
             model=model,
         ),
-        inputs=list(parameters.iterrows()),
+        inputs=list(to_scan.iterrows()),
         cache=cache,
         parallel=parallel,
     )
     concs = cast(dict, {k: v.variables for k, v in res.items()})
     fluxes = cast(dict, {k: v.fluxes for k, v in res.items()})
     return TimeCourseByPars(
-        parameters=parameters,
+        parameters=to_scan,
         variables=pd.concat(concs, names=["n", "time"]),
         fluxes=pd.concat(fluxes, names=["n", "time"]),
     )
@@ -592,7 +592,7 @@ def time_course(
 
 def time_course_over_protocol(
     model: Model,
-    parameters: pd.DataFrame,
+    to_scan: pd.DataFrame,
     protocol: pd.DataFrame,
     time_points_per_step: int = 10,
     y0: dict[str, float] | None = None,
@@ -618,7 +618,7 @@ def time_course_over_protocol(
 
     Args:
         model: Model instance to simulate.
-        parameters: DataFrame containing parameter values to scan.
+        to_scan: DataFrame containing parameter or initial values to scan.
         protocol: Protocol to follow for the simulation.
         time_points_per_step: Number of time points per protocol step (default: 10).
         y0: Initial conditions as a dictionary {variable: value}.
@@ -631,26 +631,28 @@ def time_course_over_protocol(
         TimeCourseByPars: Protocol series results for each parameter set.
 
     """
+    if y0 is not None:
+        model.update_variables(y0)
+
     res = parallelise(
         partial(
-            _update_parameters_and,
+            _update_parameters_and_initial_conditions,
             fn=partial(
                 worker,
                 protocol=protocol,
-                y0=y0,
                 time_points_per_step=time_points_per_step,
                 integrator=integrator,
             ),
             model=model,
         ),
-        inputs=list(parameters.iterrows()),
+        inputs=list(to_scan.iterrows()),
         cache=cache,
         parallel=parallel,
     )
     concs = cast(dict, {k: v.variables for k, v in res.items()})
     fluxes = cast(dict, {k: v.fluxes for k, v in res.items()})
     return ProtocolByPars(
-        parameters=parameters,
+        parameters=to_scan,
         protocol=protocol,
         variables=pd.concat(concs, names=["n", "time"]),
         fluxes=pd.concat(fluxes, names=["n", "time"]),

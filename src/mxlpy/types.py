@@ -354,7 +354,7 @@ class McSteadyStates:
     variables: pd.DataFrame
     fluxes: pd.DataFrame
     parameters: pd.DataFrame
-    mc_parameters: pd.DataFrame
+    mc_to_scan: pd.DataFrame
 
     def __iter__(self) -> Iterator[pd.DataFrame]:
         """Iterate over the concentration and flux steady states."""

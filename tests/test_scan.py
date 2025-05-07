@@ -15,7 +15,7 @@ from mxlpy.scan import (
     _empty_flux_series,
     _steady_state_worker,
     _time_course_worker,
-    _update_parameters_and,
+    _update_parameters_and_initial_conditions,
     steady_state,
     time_course,
 )
@@ -87,7 +87,7 @@ def test_update_parameters_and(simple_model: Model) -> None:
     def get_params(model: Model) -> dict[str, float]:
         return model.parameters
 
-    result = _update_parameters_and(params, get_params, simple_model)
+    result = _update_parameters_and_initial_conditions(params, get_params, simple_model)
     assert result["k1"] == 2.0
     assert result["k2"] == 2.0  # Unchanged
 
@@ -242,7 +242,6 @@ def test_timecourse_results(simple_model: Model) -> None:
 def test_steady_state_worker(simple_model: Model) -> None:
     result = _steady_state_worker(
         simple_model,
-        y0=None,
         rel_norm=False,
         integrator=DefaultIntegrator,
     )
@@ -259,7 +258,6 @@ def test_time_course_worker(simple_model: Model) -> None:
     time_points = np.linspace(0, 1, 3)
     result = _time_course_worker(
         simple_model,
-        y0=None,
         time_points=time_points,
         integrator=DefaultIntegrator,
     )
