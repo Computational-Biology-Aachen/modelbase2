@@ -21,6 +21,7 @@ repos:
       - id: uv-lock
         name: uv-lock
         stages: [pre-commit]
+        always_run: True
 
   - repo: local
     hooks:
@@ -31,6 +32,7 @@ repos:
         pass_filenames: false
         entry: pixi lock
         files: ^(.*/)?(pixi\.lock|pyproject\.toml)$
+        always_run: True
 
   - repo: https://github.com/aio-libs/sort-all
     rev: v1.3.0
