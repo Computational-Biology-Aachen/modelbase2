@@ -85,7 +85,10 @@ def test_steady_state(simple_model: Model, mc_to_scan: pd.DataFrame) -> None:
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.steady_state(simple_model, mc_to_scan)
+        result = mc.steady_state(
+            simple_model,
+            mc_to_scan=mc_to_scan,
+        )
 
         # Verify the results
         assert isinstance(result, SteadyStates)
@@ -133,7 +136,11 @@ def test_time_course(simple_model: Model, mc_to_scan: pd.DataFrame) -> None:
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.time_course(simple_model, time_points, mc_to_scan)
+        result = mc.time_course(
+            simple_model,
+            time_points=time_points,
+            mc_to_scan=mc_to_scan,
+        )
 
         # Verify the results
         assert sorted({idx[0] for idx in result.variables.index}) == [0, 1, 2]
@@ -182,7 +189,11 @@ def test_time_course_over_protocol(
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.time_course_over_protocol(simple_model, protocol, mc_to_scan)
+        result = mc.time_course_over_protocol(
+            simple_model,
+            protocol=protocol,
+            mc_to_scan=mc_to_scan,
+        )
 
         # Verify the results
         assert sorted({idx[0] for idx in result.variables.index}) == [0, 1, 2]
@@ -234,7 +245,11 @@ def test_scan_steady_state(simple_model: Model, mc_to_scan: pd.DataFrame) -> Non
         mock_parallelise.return_value = mock_results
 
         # Call the function
-        result = mc.scan_steady_state(simple_model, scan_parameters, mc_to_scan)
+        result = mc.scan_steady_state(
+            simple_model,
+            to_scan=scan_parameters,
+            mc_to_scan=mc_to_scan,
+        )
 
         # Verify the results
         assert isinstance(result, McSteadyStates)

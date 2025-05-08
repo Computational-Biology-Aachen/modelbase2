@@ -270,21 +270,29 @@ def test_time_course_worker(simple_model: Model) -> None:
 
 
 def test_steady_state_scan(simple_model: Model) -> None:
-    parameters = pd.DataFrame({"k1": [1.0, 2.0, 3.0]})
+    to_scan = pd.DataFrame({"k1": [1.0, 2.0, 3.0]})
 
-    result = steady_state(simple_model, parameters, parallel=False)
+    result = steady_state(
+        simple_model,
+        to_scan=to_scan,
+        parallel=False,
+    )
 
     assert result.variables.shape == (3, 2)
     assert result.fluxes.shape == (3, 2)
-    assert result.parameters.equals(parameters)
+    assert result.parameters.equals(to_scan)
     assert not np.isnan(result.variables.values).any()
     assert not np.isnan(result.fluxes.values).any()
 
 
 def test_steady_state_scan_with_multiindex(simple_model: Model) -> None:
-    parameters = pd.DataFrame({"k1": [1.0, 2.0], "k2": [3.0, 4.0]})
+    to_scan = pd.DataFrame({"k1": [1.0, 2.0], "k2": [3.0, 4.0]})
 
-    result = steady_state(simple_model, parameters, parallel=False)
+    result = steady_state(
+        simple_model,
+        to_scan=to_scan,
+        parallel=False,
+    )
 
     assert result.variables.shape == (2, 2)
     assert result.fluxes.shape == (2, 2)
@@ -295,10 +303,15 @@ def test_steady_state_scan_with_multiindex(simple_model: Model) -> None:
 
 
 def test_time_course_scan(simple_model: Model) -> None:
-    parameters = pd.DataFrame({"k1": [1.0, 2.0]})
+    to_scan = pd.DataFrame({"k1": [1.0, 2.0]})
     time_points = np.linspace(0, 1, 3)
 
-    result = time_course(simple_model, parameters, time_points, parallel=False)
+    result = time_course(
+        simple_model,
+        to_scan=to_scan,
+        time_points=time_points,
+        parallel=False,
+    )
 
     assert result.variables.shape == (6, 2)  # 2 params x 3 time points x 2 variables
     assert result.fluxes.shape == (6, 2)  # 2 params x 3 time points x 2 reactions
