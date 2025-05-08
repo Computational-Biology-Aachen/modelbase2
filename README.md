@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="docs/assets/logo-diagram.png" width="60%" alt='mxlpy-logo'>
+    <img src="docs/assets/logo-diagram.png" width="600px" alt='mxlpy-logo'>
 </p>
 
 # mxlpy
