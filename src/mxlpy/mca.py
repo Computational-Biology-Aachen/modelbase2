@@ -38,6 +38,73 @@ if TYPE_CHECKING:
     from mxlpy.types import IntegratorType
 
 
+def _response_coefficient_worker(
+    parameter: str,
+    *,
+    model: Model,
+    y0: dict[str, float] | None,
+    normalized: bool,
+    rel_norm: bool,
+    displacement: float = 1e-4,
+    integrator: IntegratorType,
+) -> tuple[pd.Series, pd.Series]:
+    """Calculate response coefficients for a single parameter.
+
+    Internal helper function that computes concentration and flux response
+    coefficients using finite differences. The function:
+    1. Perturbs the parameter up and down by a small displacement
+    2. Calculates steady states for each perturbation
+    3. Computes response coefficients from the differences
+    4. Optionally normalizes the results
+
+    Args:
+        parameter: Name of the parameter to analyze
+        model: Metabolic model instance
+        y0: Initial conditions as a dictionary {species: value}
+        normalized: Whether to normalize the coefficients
+        rel_norm: Whether to use relative normalization
+        displacement: Relative perturbation size (default: 1e-4)
+        integrator: Integrator function to use for steady state calculation
+
+    Returns:
+        tuple[pd.Series, pd.Series]: Tuple containing:
+            - Series of concentration response coefficients
+            - Series of flux response coefficients
+
+    """
+    old = model.parameters[parameter]
+    if y0 is not None:
+        model.update_variables(y0)
+
+    model.update_parameters({parameter: old * (1 + displacement)})
+    upper = _steady_state_worker(
+        model,
+        rel_norm=rel_norm,
+        integrator=integrator,
+    )
+
+    model.update_parameters({parameter: old * (1 - displacement)})
+    lower = _steady_state_worker(
+        model,
+        rel_norm=rel_norm,
+        integrator=integrator,
+    )
+
+    conc_resp = (upper.variables - lower.variables) / (2 * displacement * old)
+    flux_resp = (upper.fluxes - lower.fluxes) / (2 * displacement * old)
+    # Reset
+    model.update_parameters({parameter: old})
+    if normalized:
+        norm = _steady_state_worker(
+            model,
+            rel_norm=rel_norm,
+            integrator=integrator,
+        )
+        conc_resp *= old / norm.variables
+        flux_resp *= old / norm.fluxes
+    return conc_resp, flux_resp
+
+
 ###############################################################################
 # Non-steady state
 ###############################################################################
@@ -159,77 +226,10 @@ def parameter_elasticities(
 # ###############################################################################
 
 
-def _response_coefficient_worker(
-    parameter: str,
-    *,
-    model: Model,
-    y0: dict[str, float] | None,
-    normalized: bool,
-    rel_norm: bool,
-    displacement: float = 1e-4,
-    integrator: IntegratorType,
-) -> tuple[pd.Series, pd.Series]:
-    """Calculate response coefficients for a single parameter.
-
-    Internal helper function that computes concentration and flux response
-    coefficients using finite differences. The function:
-    1. Perturbs the parameter up and down by a small displacement
-    2. Calculates steady states for each perturbation
-    3. Computes response coefficients from the differences
-    4. Optionally normalizes the results
-
-    Args:
-        parameter: Name of the parameter to analyze
-        model: Metabolic model instance
-        y0: Initial conditions as a dictionary {species: value}
-        normalized: Whether to normalize the coefficients
-        rel_norm: Whether to use relative normalization
-        displacement: Relative perturbation size (default: 1e-4)
-        integrator: Integrator function to use for steady state calculation
-
-    Returns:
-        tuple[pd.Series, pd.Series]: Tuple containing:
-            - Series of concentration response coefficients
-            - Series of flux response coefficients
-
-    """
-    old = model.parameters[parameter]
-    if y0 is not None:
-        model.update_variables(y0)
-
-    model.update_parameters({parameter: old * (1 + displacement)})
-    upper = _steady_state_worker(
-        model,
-        rel_norm=rel_norm,
-        integrator=integrator,
-    )
-
-    model.update_parameters({parameter: old * (1 - displacement)})
-    lower = _steady_state_worker(
-        model,
-        rel_norm=rel_norm,
-        integrator=integrator,
-    )
-
-    conc_resp = (upper.variables - lower.variables) / (2 * displacement * old)
-    flux_resp = (upper.fluxes - lower.fluxes) / (2 * displacement * old)
-    # Reset
-    model.update_parameters({parameter: old})
-    if normalized:
-        norm = _steady_state_worker(
-            model,
-            rel_norm=rel_norm,
-            integrator=integrator,
-        )
-        conc_resp *= old / norm.variables
-        flux_resp *= old / norm.fluxes
-    return conc_resp, flux_resp
-
-
 def response_coefficients(
     model: Model,
-    to_scan: list[str] | None = None,
     *,
+    to_scan: list[str] | None = None,
     variables: dict[str, float] | None = None,
     normalized: bool = True,
     displacement: float = 1e-4,

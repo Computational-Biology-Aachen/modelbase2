@@ -124,8 +124,8 @@ def _parameter_scan_worker(
 
 def steady_state(
     model: Model,
-    mc_to_scan: pd.DataFrame,
     *,
+    mc_to_scan: pd.DataFrame,
     y0: dict[str, float] | None = None,
     max_workers: int | None = None,
     cache: Cache | None = None,
@@ -178,6 +178,7 @@ def steady_state(
 
 def time_course(
     model: Model,
+    *,
     time_points: Array,
     mc_to_scan: pd.DataFrame,
     y0: dict[str, float] | None = None,
@@ -232,6 +233,7 @@ def time_course(
 
 def time_course_over_protocol(
     model: Model,
+    *,
     protocol: pd.DataFrame,
     mc_to_scan: pd.DataFrame,
     y0: dict[str, float] | None = None,
@@ -291,9 +293,9 @@ def time_course_over_protocol(
 
 def scan_steady_state(
     model: Model,
+    *,
     to_scan: pd.DataFrame,
     mc_to_scan: pd.DataFrame,
-    *,
     y0: dict[str, float] | None = None,
     max_workers: int | None = None,
     cache: Cache | None = None,
@@ -370,8 +372,8 @@ def scan_steady_state(
 
 def variable_elasticities(
     model: Model,
-    mc_to_scan: pd.DataFrame,
     *,
+    mc_to_scan: pd.DataFrame,
     to_scan: list[str] | None = None,
     variables: dict[str, float] | None = None,
     time: float = 0,
@@ -434,8 +436,8 @@ def variable_elasticities(
 
 def parameter_elasticities(
     model: Model,
-    mc_to_scan: pd.DataFrame,
     *,
+    mc_to_scan: pd.DataFrame,
     to_scan: list[str],
     variables: dict[str, float],
     time: float = 0,
@@ -498,9 +500,9 @@ def parameter_elasticities(
 
 def response_coefficients(
     model: Model,
+    *,
     mc_to_scan: pd.DataFrame,
     to_scan: list[str],
-    *,
     variables: dict[str, float] | None = None,
     cache: Cache | None = None,
     normalized: bool = True,

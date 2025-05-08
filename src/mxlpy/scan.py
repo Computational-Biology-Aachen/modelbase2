@@ -428,9 +428,9 @@ def _protocol_worker(
 
 def steady_state(
     model: Model,
+    *,
     to_scan: pd.DataFrame,
     y0: dict[str, float] | None = None,
-    *,
     parallel: bool = True,
     rel_norm: bool = False,
     cache: Cache | None = None,
@@ -505,10 +505,10 @@ def steady_state(
 
 def time_course(
     model: Model,
+    *,
     to_scan: pd.DataFrame,
     time_points: Array,
     y0: dict[str, float] | None = None,
-    *,
     parallel: bool = True,
     cache: Cache | None = None,
     worker: TimeCourseWorker = _time_course_worker,
@@ -592,11 +592,11 @@ def time_course(
 
 def time_course_over_protocol(
     model: Model,
+    *,
     to_scan: pd.DataFrame,
     protocol: pd.DataFrame,
     time_points_per_step: int = 10,
     y0: dict[str, float] | None = None,
-    *,
     parallel: bool = True,
     cache: Cache | None = None,
     worker: ProtocolWorker = _protocol_worker,
