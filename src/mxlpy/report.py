@@ -48,12 +48,39 @@ def markdown(
 ) -> str:
     """Generate a markdown report comparing two models.
 
-    Args:
-        m1: The first model to compare.
-        m2: The second model to compare.
-        analyses: A list of functions that take a Path and return a tuple of a string and a Path. Defaults to None.
-        rel_change: The relative change threshold for numerical differences. Defaults to 1e-2.
-        img_path: The path to save images. Defaults to Path().
+    Parameters
+    ----------
+    m1
+        The first model to compare
+    m2
+        The second model to compare
+    analyses
+        A list of functions that analyze both models and return a report section with image
+    rel_change
+        The relative change threshold for numerical differences
+    img_path
+        The path to save images
+
+    Returns
+    -------
+    str
+        Markdown formatted report comparing the two models
+
+    Examples
+    --------
+    >>> from mxlpy import Model
+    >>> m1 = Model().add_parameter("k1", 0.1).add_variable("S", 1.0)
+    >>> m2 = Model().add_parameter("k1", 0.2).add_variable("S", 1.0)
+    >>> report = markdown(m1, m2)
+    >>> "Parameters" in report and "k1" in report
+    True
+
+    >>> # With custom analysis function
+    >>> def custom_analysis(m1, m2, path):
+    ...     return "## Custom analysis", path / "image.png"
+    >>> report = markdown(m1, m2, analyses=[custom_analysis])
+    >>> "Custom analysis" in report
+    True
 
     """
     content: list[str] = [

@@ -24,6 +24,8 @@ __all__ = [
 
 @dataclass
 class Context:
+    """Context for converting a function to sympy expression."""
+
     symbols: dict[str, sympy.Symbol | sympy.Expr]
     caller: Callable
     parent_module: ModuleType | None
@@ -34,6 +36,7 @@ class Context:
         caller: Callable | None = None,
         parent_module: ModuleType | None = None,
     ) -> "Context":
+        """Update the context with new values."""
         return Context(
             symbols=self.symbols if symbols is None else symbols,
             caller=self.caller if caller is None else caller,
@@ -44,7 +47,26 @@ class Context:
 
 
 def get_fn_source(fn: Callable) -> str:
-    """Get the string representation of a function."""
+    """Get the string representation of a function.
+
+    Parameters
+    ----------
+    fn
+        The function to extract source from
+
+    Returns
+    -------
+    str
+        String representation of the function's source code
+
+    Examples
+    --------
+    >>> def example_fn(x): return x * 2
+    >>> source = get_fn_source(example_fn)
+    >>> print(source)
+    def example_fn(x): return x * 2
+
+    """
     try:
         return inspect.getsource(fn)
     except OSError:  # could not get source code
@@ -52,7 +74,31 @@ def get_fn_source(fn: Callable) -> str:
 
 
 def get_fn_ast(fn: Callable) -> ast.FunctionDef:
-    """Get the source code of a function as an AST."""
+    """Get the source code of a function as an AST.
+
+    Parameters
+    ----------
+    fn
+        The function to convert to AST
+
+    Returns
+    -------
+    ast.FunctionDef
+        Abstract syntax tree representation of the function
+
+    Raises
+    ------
+    TypeError
+        If the input is not a function
+
+    Examples
+    --------
+    >>> def example_fn(x): return x * 2
+    >>> ast_tree = get_fn_ast(example_fn)
+    >>> isinstance(ast_tree, ast.FunctionDef)
+    True
+
+    """
     tree = ast.parse(textwrap.dedent(get_fn_source(fn)))
     if not isinstance(fn_def := tree.body[0], ast.FunctionDef):
         msg = "Not a function"
@@ -61,6 +107,27 @@ def get_fn_ast(fn: Callable) -> ast.FunctionDef:
 
 
 def sympy_to_inline(expr: sympy.Expr) -> str:
+    """Convert a sympy expression to inline Python code.
+
+    Parameters
+    ----------
+    expr
+        The sympy expression to convert
+
+    Returns
+    -------
+    str
+        Python code string for the expression
+
+    Examples
+    --------
+    >>> import sympy
+    >>> x = sympy.Symbol('x')
+    >>> expr = x**2 + 2*x + 1
+    >>> sympy_to_inline(expr)
+    'x**2 + 2*x + 1'
+
+    """
     return cast(str, pycode(expr, fully_qualified_modules=True))
 
 
@@ -70,7 +137,32 @@ def sympy_to_fn(
     args: list[str],
     expr: sympy.Expr,
 ) -> str:
-    """Convert a sympy expression to a python function."""
+    """Convert a sympy expression to a python function.
+
+    Parameters
+    ----------
+    fn_name
+        Name of the function to generate
+    args
+        List of argument names for the function
+    expr
+        Sympy expression to convert to a function body
+
+    Returns
+    -------
+    str
+        String representation of the generated function
+
+    Examples
+    --------
+    >>> import sympy
+    >>> x, y = sympy.symbols('x y')
+    >>> expr = x**2 + y
+    >>> print(sympy_to_fn(fn_name="square_plus_y", args=["x", "y"], expr=expr))
+    def square_plus_y(x: float, y: float) -> float:
+        return x**2 + y
+
+    """
     fn_args = ", ".join(f"{i}: float" for i in args)
 
     return f"""def {fn_name}({fn_args}) -> float:
@@ -82,7 +174,33 @@ def fn_to_sympy(
     fn: Callable,
     model_args: list[sympy.Symbol | sympy.Expr] | None = None,
 ) -> sympy.Expr:
-    """Convert a python function to a sympy expression."""
+    """Convert a python function to a sympy expression.
+
+    Parameters
+    ----------
+    fn
+        The function to convert
+    model_args
+        Optional list of sympy symbols to substitute for function arguments
+
+    Returns
+    -------
+    sympy.Expr
+        Sympy expression equivalent to the function
+
+    Examples
+    --------
+    >>> def square_fn(x):
+    ...     return x**2
+    >>> import sympy
+    >>> fn_to_sympy(square_fn)
+    x**2
+    >>> # With model_args
+    >>> y = sympy.Symbol('y')
+    >>> fn_to_sympy(square_fn, [y])
+    y**2
+
+    """
     fn_def = get_fn_ast(fn)
     fn_args = [str(arg.arg) for arg in fn_def.args.args]
     sympy_expr = _handle_fn_body(

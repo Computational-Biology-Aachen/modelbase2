@@ -37,7 +37,26 @@ def _list_of_symbols(args: list[str]) -> list[sympy.Symbol | sympy.Expr]:
 
 
 def default_init[T1, T2](d: dict[T1, T2] | None) -> dict[T1, T2]:
-    """Return empty dict if d is None."""
+    """Return empty dict if d is None.
+
+    Parameters
+    ----------
+    d
+        Dictionary to check
+
+    Returns
+    -------
+    dict
+        Original dictionary if not None, otherwise an empty dictionary
+
+    Examples
+    --------
+    >>> default_init(None)
+    {}
+    >>> default_init({"key": "value"})
+    {'key': 'value'}
+
+    """
     return {} if d is None else d
 
 
@@ -256,7 +275,23 @@ def _stoichiometries_to_latex(stoich: Mapping[str, float | Derived]) -> str:
 
 @dataclass
 class TexReaction:
-    """Collection for reaction."""
+    """Collection for reaction.
+
+    Parameters
+    ----------
+    fn
+        Rate function for the reaction
+    args
+        List of argument names for the rate function
+
+    Examples
+    --------
+    >>> def rate_fn(k, s): return k * s
+    >>> reaction = TexReaction(fn=rate_fn, args=["k1", "S"])
+    >>> reaction.fn(0.1, 1.0)
+    0.1
+
+    """
 
     fn: RateFn
     args: list[str]
@@ -264,7 +299,35 @@ class TexReaction:
 
 @dataclass
 class TexExport:
-    """Container for LaTeX export."""
+    """Container for LaTeX export.
+
+    This class handles the conversion of model components to LaTeX format
+    for exporting models as LaTeX documents.
+
+    Parameters
+    ----------
+    parameters
+        Dictionary of parameter names and their values
+    variables
+        Dictionary of variable names and their initial values
+    derived
+        Dictionary of derived variables and their definitions
+    reactions
+        Dictionary of reaction names and their rate functions
+    stoichiometries
+        Dictionary mapping reaction names to stoichiometry dictionaries
+
+    Examples
+    --------
+    >>> parameters = {"k1": 0.1, "k2": 0.2}
+    >>> variables = {"S": 1.0, "P": 0.0}
+    >>> derived = {"total": Derived(fn=lambda s, p: s + p, args=["S", "P"])}
+    >>> reactions = {"v1": TexReaction(fn=lambda k, s: k*s, args=["k1", "S"])}
+    >>> stoich = {"v1": {"S": -1, "P": 1}}
+    >>> tex = TexExport(parameters, variables, derived, reactions, stoich)
+    >>> latex_doc = tex.export_document(author="User", title="My Model")
+
+    """
 
     parameters: dict[str, float]
     variables: dict[str, float]
@@ -298,7 +361,27 @@ class TexExport:
         return {k: v for k, v in p2.items() if k not in p1 or p1[k] != v}
 
     def __sub__(self, other: object) -> TexExport:
-        """Return difference of two tex exports."""
+        """Return difference of two tex exports.
+
+        Parameters
+        ----------
+        other
+            Another TexExport instance to compare with
+
+        Returns
+        -------
+        TexExport
+            A new TexExport containing only the elements that differ
+
+        Examples
+        --------
+        >>> tex1 = TexExport({"k": 1.0}, {}, {}, {}, {})
+        >>> tex2 = TexExport({"k": 2.0}, {}, {}, {}, {})
+        >>> diff = tex1 - tex2
+        >>> diff.parameters
+        {'k': 2.0}
+
+        """
         if not isinstance(other, TexExport):
             raise TypeError
 
@@ -315,7 +398,28 @@ class TexExport:
         )
 
     def rename_with_glossary(self, gls: dict[str, str]) -> TexExport:
-        """Rename all elements according to glossary."""
+        """Rename all elements according to glossary.
+
+        Parameters
+        ----------
+        gls
+            Dictionary mapping original names to glossary names
+
+        Returns
+        -------
+        TexExport
+            A new TexExport with renamed elements
+
+        Examples
+        --------
+        >>> tex = TexExport({"k": 1.0}, {"S": 1.0}, {}, {}, {})
+        >>> renamed = tex.rename_with_glossary({"k": "rate", "S": "substrate"})
+        >>> renamed.parameters
+        {'rate': 1.0}
+        >>> renamed.variables
+        {'substrate': 1.0}
+
+        """
 
         def _add_gls_if_found(k: str) -> str:
             if (new := gls.get(k)) is not None:
@@ -343,7 +447,21 @@ class TexExport:
         )
 
     def export_variables(self) -> str:
-        """Export variables."""
+        """Export variables as LaTeX table.
+
+        Returns
+        -------
+        str
+            LaTeX code for variables table
+
+        Examples
+        --------
+        >>> tex = TexExport({}, {"S": 1.0, "P": 0.5}, {}, {}, {})
+        >>> latex = tex.export_variables()
+        >>> "Model variables" in latex
+        True
+
+        """
         return _table(
             headers=["Model name", "Initial concentration"],
             rows=[
@@ -360,7 +478,21 @@ class TexExport:
         )
 
     def export_parameters(self) -> str:
-        """Export parameters."""
+        """Export parameters as LaTeX table.
+
+        Returns
+        -------
+        str
+            LaTeX code for parameters table
+
+        Examples
+        --------
+        >>> tex = TexExport({"k1": 0.1, "k2": 0.2}, {}, {}, {}, {})
+        >>> latex = tex.export_parameters()
+        >>> "Model parameters" in latex
+        True
+
+        """
         return _table(
             headers=["Parameter name", "Parameter value"],
             rows=[
@@ -374,7 +506,23 @@ class TexExport:
         )
 
     def export_derived(self) -> str:
-        """Export derived quantities."""
+        """Export derived quantities as LaTeX equations.
+
+        Returns
+        -------
+        str
+            LaTeX code with derived quantity equations
+
+        Examples
+        --------
+        >>> def sum_fn(x, y): return x + y
+        >>> derived = {"total": Derived(fn=sum_fn, args=["S", "P"])}
+        >>> tex = TexExport({}, {}, derived, {}, {})
+        >>> latex = tex.export_derived()
+        >>> "total" in latex
+        True
+
+        """
         return _latex_list(
             rows=[
                 _dmath(
@@ -385,7 +533,23 @@ class TexExport:
         )
 
     def export_reactions(self) -> str:
-        """Export reactions."""
+        """Export reactions as LaTeX equations.
+
+        Returns
+        -------
+        str
+            LaTeX code with reaction rate equations
+
+        Examples
+        --------
+        >>> def rate_fn(k, s): return k * s
+        >>> reactions = {"v1": TexReaction(fn=rate_fn, args=["k1", "S"])}
+        >>> tex = TexExport({}, {}, {}, reactions, {})
+        >>> latex = tex.export_reactions()
+        >>> "v1" in latex
+        True
+
+        """
         return _latex_list(
             rows=[
                 _dmath(
@@ -396,7 +560,22 @@ class TexExport:
         )
 
     def export_stoichiometries(self) -> str:
-        """Export stoichiometries."""
+        """Export stoichiometries as LaTeX table.
+
+        Returns
+        -------
+        str
+            LaTeX code for stoichiometries table
+
+        Examples
+        --------
+        >>> stoich = {"v1": {"S": -1, "P": 1}}
+        >>> tex = TexExport({}, {}, {}, {}, stoich)
+        >>> latex = tex.export_stoichiometries()
+        >>> "Model stoichiometries" in latex
+        True
+
+        """
         return _table(
             headers=["Rate name", "Stoichiometry"],
             rows=[
@@ -413,7 +592,21 @@ class TexExport:
         )
 
     def export_all(self) -> str:
-        """Export all model parts."""
+        """Export all model parts as a complete LaTeX document section.
+
+        Returns
+        -------
+        str
+            LaTeX code containing all model components
+
+        Examples
+        --------
+        >>> tex = TexExport({"k": 1.0}, {"S": 1.0}, {}, {}, {})
+        >>> latex = tex.export_all()
+        >>> "Parameters" in latex and "Variables" in latex
+        True
+
+        """
         sections = []
         if len(self.variables) > 0:
             sections.append(
@@ -456,7 +649,28 @@ class TexExport:
         author: str = "mxlpy",
         title: str = "Model construction",
     ) -> str:
-        """Export latex document."""
+        r"""Export complete LaTeX document with all model components.
+
+        Parameters
+        ----------
+        author
+            Name of the author for the document
+        title
+            Title for the document
+
+        Returns
+        -------
+        str
+            Complete LaTeX document as a string
+
+        Examples
+        --------
+        >>> tex = TexExport({"k": 1.0}, {"S": 1.0}, {}, {}, {})
+        >>> doc = tex.export_document(author="Jane Doe", title="My Model")
+        >>> "\\title{My Model}" in doc and "\\author{Jane Doe}" in doc
+        True
+
+        """
         content = self.export_all()
         return rf"""\documentclass{{article}}
 \usepackage[english]{{babel}}
@@ -491,7 +705,33 @@ def generate_latex_code(
     model: Model,
     gls: dict[str, str] | None = None,
 ) -> str:
-    """Export as LaTeX."""
+    """Export model as LaTeX document.
+
+    Parameters
+    ----------
+    model
+        The model to export
+    gls
+        Optional glossary mapping for renaming model components
+
+    Returns
+    -------
+    str
+        Complete LaTeX document as string
+
+    Examples
+    --------
+    >>> from mxlpy import Model
+    >>> model = Model()
+    >>> model.add_parameter("k1", 0.1)
+    >>> model.add_variable("S", 1.0)
+    >>> latex = generate_latex_code(model)
+    >>> "Model parameters" in latex and "Model variables" in latex
+    True
+    >>> # With glossary
+    >>> latex = generate_latex_code(model, {"k1": "rate", "S": "substrate"})
+
+    """
     gls = default_init(gls)
     return _to_tex_export(model).rename_with_glossary(gls).export_document()
 
@@ -501,7 +741,32 @@ def get_model_tex_diff(
     m2: Model,
     gls: dict[str, str] | None = None,
 ) -> str:
-    """Create LaTeX diff of two models."""
+    """Create LaTeX diff showing changes between two models.
+
+    Parameters
+    ----------
+    m1
+        First model (considered as base model)
+    m2
+        Second model (compared against the base)
+    gls
+        Optional glossary mapping for renaming model components
+
+    Returns
+    -------
+    str
+        LaTeX document section showing differences between models
+
+    Examples
+    --------
+    >>> from mxlpy import Model
+    >>> m1 = Model().add_parameter("k1", 0.1)
+    >>> m2 = Model().add_parameter("k1", 0.2)
+    >>> diff = get_model_tex_diff(m1, m2)
+    >>> "Model changes" in diff and "Parameters" in diff
+    True
+
+    """
     gls = default_init(gls)
     section_label = "sec:model-diff"
 

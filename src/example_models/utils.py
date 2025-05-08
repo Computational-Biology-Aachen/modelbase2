@@ -1,3 +1,5 @@
+"""General utility functions for example models."""
+
 from mxlpy import Model
 
 __all__ = ["filter_stoichiometry"]

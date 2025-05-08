@@ -27,9 +27,7 @@ import tqdm
 from sympy import Matrix
 from sympy.matrices import zeros
 
-from mxlpy.model import Model
-
-from .symbolic_model import SymbolicModel, to_symbolic_model
+from .symbolic_model import SymbolicModel
 
 __all__ = [
     "Options",

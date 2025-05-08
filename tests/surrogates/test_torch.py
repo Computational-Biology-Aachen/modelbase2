@@ -19,7 +19,7 @@ class SimpleModel(nn.Module):
         super().__init__()
         self.linear = nn.Linear(n_inputs, n_outputs)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.linear(x)
 
 
@@ -52,7 +52,7 @@ def test_torch_surrogate_predict_raw() -> None:
     assert result.shape == (2, 2)  # 2 samples, 2 outputs
 
 
-def test_train_full(features_targets) -> None:
+def test_train_full(features_targets: tuple[pd.DataFrame, pd.DataFrame]) -> None:
     features, targets = features_targets
     model = SimpleModel(n_inputs=2, n_outputs=2)
     optimizer = torch.optim.Adam(model.parameters())
@@ -77,7 +77,7 @@ def test_train_full(features_targets) -> None:
         assert losses.iloc[-1] <= losses.iloc[0] * 1.1  # Allow small fluctuations
 
 
-def test_train_batched(features_targets) -> None:
+def test_train_batched(features_targets: tuple[pd.DataFrame, pd.DataFrame]) -> None:
     features, targets = features_targets
     model = SimpleModel(n_inputs=2, n_outputs=2)
     optimizer = torch.optim.Adam(model.parameters())
@@ -99,7 +99,9 @@ def test_train_batched(features_targets) -> None:
     assert losses.dtype == float
 
 
-def test_train_torch_surrogate_with_default_approximator(features_targets) -> None:
+def test_train_torch_surrogate_with_default_approximator(
+    features_targets: tuple[pd.DataFrame, pd.DataFrame],
+) -> None:
     features, targets = features_targets
 
     surrogate, losses = train_torch_surrogate(
@@ -115,7 +117,9 @@ def test_train_torch_surrogate_with_default_approximator(features_targets) -> No
     assert len(losses) == 3  # 3 epochs
 
 
-def test_train_torch_surrogate_with_custom_approximator(features_targets) -> None:
+def test_train_torch_surrogate_with_custom_approximator(
+    features_targets: tuple[pd.DataFrame, pd.DataFrame],
+) -> None:
     features, targets = features_targets
     model = SimpleModel(n_inputs=2, n_outputs=2)
 
@@ -132,7 +136,9 @@ def test_train_torch_surrogate_with_custom_approximator(features_targets) -> Non
     assert len(losses) == 3
 
 
-def test_train_torch_surrogate_with_batch(features_targets) -> None:
+def test_train_torch_surrogate_with_batch(
+    features_targets: tuple[pd.DataFrame, pd.DataFrame],
+) -> None:
     features, targets = features_targets
 
     surrogate, losses = train_torch_surrogate(
@@ -148,7 +154,9 @@ def test_train_torch_surrogate_with_batch(features_targets) -> None:
     assert len(losses) == 3
 
 
-def test_train_torch_surrogate_with_args_and_stoichiometries(features_targets) -> None:
+def test_train_torch_surrogate_with_args_and_stoichiometries(
+    features_targets: tuple[pd.DataFrame, pd.DataFrame],
+) -> None:
     features, targets = features_targets
     surrogate_args = ["x1", "x2"]
     surrogate_stoichiometries = {"r1": {"x1": -1.0, "x2": 1.0}}

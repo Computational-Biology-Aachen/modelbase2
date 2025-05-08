@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from mxlpy import Model
-from mxlpy.fns import mass_action_1s, mass_action_2s
+from mxlpy.fns import mass_action_1s
 from mxlpy.label_map import (
     LabelMapper,
     _assign_compound_labels,
@@ -193,7 +193,7 @@ def simple_model() -> Model:
     return model
 
 
-def test_create_isotopomer_reactions(simple_model: Model) -> None:
+def test_create_isotopomer_reactions() -> None:
     test_model = Model()
     test_model.add_parameters({"k1": 1.0})
     test_model.add_variables({"A": 1.0, "B": 0.0})
@@ -417,7 +417,7 @@ def test_build_model_without_labels(simple_model: Model) -> None:
     assert "C__1" not in labeled_model.variables
 
 
-def test_create_isotopomer_reactions_with_error(simple_model: Model) -> None:
+def test_create_isotopomer_reactions_with_error() -> None:
     test_model = Model()
     test_model.add_parameters({"k1": 1.0})
     test_model.add_variables({"A": 1.0, "B": 0.0})

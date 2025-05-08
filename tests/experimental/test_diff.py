@@ -48,17 +48,19 @@ def basic_model2() -> Model:
     model.add_parameters({"k1": 1.0, "k2": 3.0})  # k2 is different
     model.add_variables({"S": 10.0, "P": 0.0})
 
-    def reaction1(S, k1):
-        return k1 * S
-
-    def reaction2(P, k2):
-        return k2 * P
-
     model.add_reaction(
-        "v1", fn=reaction1, args=["S", "k1"], stoichiometry={"S": -1.0, "P": 1.0}
+        "v1",
+        fn=fns.mass_action_1s,
+        args=["S", "k1"],
+        stoichiometry={"S": -1.0, "P": 1.0},
     )
 
-    model.add_reaction("v2", fn=reaction2, args=["P", "k2"], stoichiometry={"P": -1.0})
+    model.add_reaction(
+        "v2",
+        fn=fns.mass_action_1s,
+        args=["P", "k2"],
+        stoichiometry={"P": -1.0},
+    )
 
     model.add_derived("D1", fn=fns.add, args=["S", "P"])
 
@@ -71,15 +73,12 @@ def model_with_derived_stoichiometry() -> Model:
     model.add_parameters({"k1": 1.0})
     model.add_variables({"S": 10.0, "P": 0.0})
 
-    def reaction1(S, k1):
-        return k1 * S
-
-    def stoich_fn(S):
-        return -S / 10
+    def stoich_fn(s: float) -> float:
+        return -s / 10
 
     model.add_reaction(
         "v1",
-        fn=reaction1,
+        fn=fns.mass_action_1s,
         args=["S", "k1"],
         stoichiometry={"S": Derived(fn=stoich_fn, args=["S"]), "P": 1.0},
     )
@@ -146,17 +145,17 @@ def test_model_diff_str() -> None:
     assert "Args: ['a'] != ['b']" in result
 
 
-def test_soft_eq_identical_models(basic_model1) -> None:
+def test_soft_eq_identical_models(basic_model1: Model) -> None:
     model1 = basic_model1
     model2 = basic_model1
     assert soft_eq(model1, model2)
 
 
-def test_soft_eq_different_models(basic_model1, basic_model2) -> None:
+def test_soft_eq_different_models(basic_model1: Model, basic_model2: Model) -> None:
     assert not soft_eq(basic_model1, basic_model2)
 
 
-def test_model_diff_identical(basic_model1) -> None:
+def test_model_diff_identical(basic_model1: Model) -> None:
     diff = model_diff(basic_model1, basic_model1)
     assert not diff.missing_parameters
     assert not diff.missing_variables
@@ -168,7 +167,9 @@ def test_model_diff_identical(basic_model1) -> None:
     assert not diff.different_derived
 
 
-def test_model_diff_different_parameters(basic_model1, basic_model2) -> None:
+def test_model_diff_different_parameters(
+    basic_model1: Model, basic_model2: Model
+) -> None:
     diff = model_diff(basic_model1, basic_model2)
     assert not diff.missing_parameters
     assert not diff.missing_variables
@@ -181,7 +182,7 @@ def test_model_diff_different_parameters(basic_model1, basic_model2) -> None:
     assert not diff.different_derived
 
 
-def test_model_diff_missing_reaction(basic_model1) -> None:
+def test_model_diff_missing_reaction(basic_model1: Model) -> None:
     model1 = basic_model1
     model2 = Model()
     model2.add_parameters({"k1": 1.0, "k2": 2.0})
@@ -195,28 +196,22 @@ def test_model_diff_missing_reaction(basic_model1) -> None:
     assert "D1" in diff.missing_derived
 
 
-def test_model_diff_different_stoichiometry(basic_model1) -> None:
+def test_model_diff_different_stoichiometry(basic_model1: Model) -> None:
     model1 = basic_model1
     model2 = Model()
     model2.add_parameters({"k1": 1.0, "k2": 2.0})
     model2.add_variables({"S": 10.0, "P": 0.0})
 
-    def reaction1(S, k1):
-        return k1 * S
-
-    def reaction2(P, k2):
-        return k2 * P
-
     model2.add_reaction(
         "v1",
-        fn=reaction1,
+        fn=fns.mass_action_1s,
         args=["S", "k1"],
         stoichiometry={"S": -2.0, "P": 1.0},  # Changed -1.0 to -2.0
     )
 
     model2.add_reaction(
         "v2",
-        fn=reaction2,
+        fn=fns.mass_action_1s,
         args=["P", "k2"],
         stoichiometry={"P": -1.0},
     )
@@ -229,21 +224,20 @@ def test_model_diff_different_stoichiometry(basic_model1) -> None:
     assert diff.different_reactions["v1"].stoichiometry2 == {"S": -2.0, "P": 1.0}
 
 
-def test_model_diff_derived_stoichiometry(model_with_derived_stoichiometry) -> None:
+def test_model_diff_derived_stoichiometry(
+    model_with_derived_stoichiometry: Model,
+) -> None:
     model1 = model_with_derived_stoichiometry
     model2 = Model()
     model2.add_parameters({"k1": 1.0})
     model2.add_variables({"S": 10.0, "P": 0.0})
 
-    def reaction1(S, k1):
-        return k1 * S
-
-    def different_stoich_fn(S):
-        return -S / 5  # Changed from 10 to 5
+    def different_stoich_fn(s: float) -> float:
+        return -s / 5  # Changed from 10 to 5
 
     model2.add_reaction(
         "v1",
-        fn=reaction1,
+        fn=fns.mass_action_1s,
         args=["S", "k1"],
         stoichiometry={
             "S": Derived(fn=different_stoich_fn, args=["S"]),

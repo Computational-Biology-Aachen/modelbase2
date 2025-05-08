@@ -14,14 +14,14 @@ from mxlpy.surrogates._poly import (
 @pytest.fixture
 def linear_data() -> tuple[np.ndarray, np.ndarray]:
     x = np.linspace(0, 10, 100)
-    y = 2 * x + 3 + np.random.normal(0, 0.5, size=100)
+    y = 2 * x + 3 + np.random.normal(0, 0.5, size=100)  # noqa: NPY002
     return x, y
 
 
 @pytest.fixture
 def quadratic_data() -> tuple[np.ndarray, np.ndarray]:
     x = np.linspace(-5, 5, 100)
-    y = 2 * x**2 - 3 * x + 1 + np.random.normal(0, 0.5, size=100)
+    y = 2 * x**2 - 3 * x + 1 + np.random.normal(0, 0.5, size=100)  # noqa: NPY002
     return x, y
 
 
@@ -41,7 +41,9 @@ def test_poly_surrogate_predict_raw() -> None:
     assert np.allclose(results, expected)
 
 
-def test_train_polynomial_surrogate_power_series(linear_data) -> None:
+def test_train_polynomial_surrogate_power_series(
+    linear_data: tuple[np.ndarray, np.ndarray],
+) -> None:
     x, y = linear_data
 
     surrogate, stats = train_polynomial_surrogate(
@@ -67,7 +69,9 @@ def test_train_polynomial_surrogate_power_series(linear_data) -> None:
     assert np.corrcoef(predictions, y)[0, 1] > 0.9
 
 
-def test_train_polynomial_surrogate_chebyshev_series(quadratic_data) -> None:
+def test_train_polynomial_surrogate_chebyshev_series(
+    quadratic_data: tuple[np.ndarray, np.ndarray],
+) -> None:
     x, y = quadratic_data
 
     surrogate, stats = train_polynomial_surrogate(
@@ -93,7 +97,9 @@ def test_train_polynomial_surrogate_chebyshev_series(quadratic_data) -> None:
     assert np.corrcoef(predictions, y)[0, 1] > 0.9
 
 
-def test_train_polynomial_surrogate_legendre_series(quadratic_data) -> None:
+def test_train_polynomial_surrogate_legendre_series(
+    quadratic_data: tuple[np.ndarray, np.ndarray],
+) -> None:
     x, y = quadratic_data
 
     surrogate, stats = train_polynomial_surrogate(
@@ -115,7 +121,9 @@ def test_train_polynomial_surrogate_legendre_series(quadratic_data) -> None:
     assert predictions.shape == y.shape
 
 
-def test_train_polynomial_surrogate_laguerre_series(quadratic_data) -> None:
+def test_train_polynomial_surrogate_laguerre_series(
+    quadratic_data: tuple[np.ndarray, np.ndarray],
+) -> None:
     x, y = quadratic_data
     x = np.abs(x)  # Laguerre polynomials best for x >= 0
 
@@ -134,7 +142,9 @@ def test_train_polynomial_surrogate_laguerre_series(quadratic_data) -> None:
     assert predictions.shape == y.shape
 
 
-def test_train_polynomial_surrogate_hermite_series(quadratic_data) -> None:
+def test_train_polynomial_surrogate_hermite_series(
+    quadratic_data: tuple[np.ndarray, np.ndarray],
+) -> None:
     x, y = quadratic_data
 
     surrogate, stats = train_polynomial_surrogate(
@@ -152,7 +162,9 @@ def test_train_polynomial_surrogate_hermite_series(quadratic_data) -> None:
     assert predictions.shape == y.shape
 
 
-def test_train_polynomial_surrogate_hermitee_series(quadratic_data) -> None:
+def test_train_polynomial_surrogate_hermitee_series(
+    quadratic_data: tuple[np.ndarray, np.ndarray],
+) -> None:
     x, y = quadratic_data
 
     surrogate, stats = train_polynomial_surrogate(
@@ -170,7 +182,9 @@ def test_train_polynomial_surrogate_hermitee_series(quadratic_data) -> None:
     assert predictions.shape == y.shape
 
 
-def test_train_polynomial_surrogate_with_args_and_stoichiometries(linear_data) -> None:
+def test_train_polynomial_surrogate_with_args_and_stoichiometries(
+    linear_data: tuple[np.ndarray, np.ndarray],
+) -> None:
     x, y = linear_data
     surrogate_args = ["x"]
     surrogate_stoichiometries = {"r1": {"x": -1.0, "y": 1.0}}

@@ -19,7 +19,7 @@ class SimpleModel(nn.Module):
         super().__init__()
         self.linear = nn.Linear(n_inputs, n_outputs)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.linear(x)
 
 
@@ -28,7 +28,7 @@ class SimpleTimeModel(nn.Module):
         super().__init__()
         self.linear = nn.Linear(n_inputs, n_outputs)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x has shape (batch_size, seq_len, features)
         batch_size = x.shape[0]
         seq_len = x.shape[1]
