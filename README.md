@@ -1,4 +1,6 @@
-<img src="docs/assets/logo-diagram.png" style="display: block; max-height: 30rem; margin: auto; padding: 0" alt='mxlpy-logo'>
+<p align="center">
+    <img src="docs/assets/logo-diagram.png" width="60%" alt='mxlpy-logo'>
+</p>
 
 # mxlpy
 
