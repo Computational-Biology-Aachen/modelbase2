@@ -116,7 +116,8 @@ class Assimulo:
 
         """
         try:
-            return self.integrator.simulate(time_points[-1], 0, time_points)  # type: ignore
+            t, y = self.integrator.simulate(time_points[-1], 0, time_points)  # type: ignore
+            return np.array(t, dtype=float), np.array(y, dtype=float)
         except CVodeError:
             return None, None
 
