@@ -58,7 +58,6 @@ optional-dependencies = { torch = [
   "ruff>=0.7.1",
   "coverage>=7.6.4",
   "jupyter>=1.1.1",
-  "mypy>=1.13.0",
   "pytest>=8.3.3",
   "pytest-cov>=5.0.0",
   "requests>=2.32.3",
@@ -81,16 +80,23 @@ include = ["mxlpy", "example_models"]
 [tool.hatchling.extras]
 examples = ["example_models"]
 
-[tool.mypy]
-disallow_untyped_defs = true
-exclude = "tests/*.py"
-ignore_missing_imports = true
-python_version = "3.12"
-warn_return_any = true
-warn_unused_configs = true
 
 [tool.pyright]
+pythonVersion = "3.12"
 reportMissingModuleSource = "none"
+include = [
+  "docs",
+  'publication-figures',
+  "src",
+  "tests",
+]
+exclude = [
+  "**/__pycache__",
+  "tmp",
+  "tests/sbml/assets",
+]
+strict = []
+deprecateTypingAliases = true
 
 [tool.ruff]
 indent-width = 4
