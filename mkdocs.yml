@@ -17,6 +17,7 @@ nav:
       - Stability analysis: stability.ipynb
       - Identifiability: parameter_identifiability.ipynb
       - Symbolic: symbolic.ipynb
+      - Integrator configuration: integrators.ipynb
   - Mechanistic learning: mxl.ipynb
   - Metaprogramming: metaprogramming.ipynb
   - Examples: examples.ipynb

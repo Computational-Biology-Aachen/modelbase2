@@ -11,7 +11,7 @@ from mxlpy.types import AbstractSurrogate, ArrayLike
 __all__ = [
     "PolySurrogate",
     "PolynomialExpansion",
-    "train_polynomial_surrogate",
+    "train_polynomial",
 ]
 
 # define custom type
@@ -33,7 +33,7 @@ class PolySurrogate(AbstractSurrogate):
         return self.model(y)
 
 
-def train_polynomial_surrogate(
+def train_polynomial(
     feature: ArrayLike | pd.Series,
     target: ArrayLike | pd.Series,
     series: Literal[

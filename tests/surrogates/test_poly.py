@@ -7,7 +7,7 @@ from numpy import polynomial
 
 from mxlpy.surrogates._poly import (
     PolySurrogate,
-    train_polynomial_surrogate,
+    train_polynomial,
 )
 
 
@@ -51,7 +51,7 @@ def test_train_polynomial_surrogate_power_series(
 ) -> None:
     x, y = linear_data
 
-    surrogate, stats = train_polynomial_surrogate(
+    surrogate, stats = train_polynomial(
         feature=x,
         target=y,
         series="Power",
@@ -79,7 +79,7 @@ def test_train_polynomial_surrogate_chebyshev_series(
 ) -> None:
     x, y = quadratic_data
 
-    surrogate, stats = train_polynomial_surrogate(
+    surrogate, stats = train_polynomial(
         feature=x,
         target=y,
         series="Chebyshev",
@@ -107,7 +107,7 @@ def test_train_polynomial_surrogate_legendre_series(
 ) -> None:
     x, y = quadratic_data
 
-    surrogate, stats = train_polynomial_surrogate(
+    surrogate, stats = train_polynomial(
         feature=x,
         target=y,
         series="Legendre",
@@ -132,7 +132,7 @@ def test_train_polynomial_surrogate_laguerre_series(
     x, y = quadratic_data
     x = np.abs(x)  # Laguerre polynomials best for x >= 0
 
-    surrogate, stats = train_polynomial_surrogate(
+    surrogate, stats = train_polynomial(
         feature=x,
         target=y,
         series="Laguerre",
@@ -152,7 +152,7 @@ def test_train_polynomial_surrogate_hermite_series(
 ) -> None:
     x, y = quadratic_data
 
-    surrogate, stats = train_polynomial_surrogate(
+    surrogate, stats = train_polynomial(
         feature=x,
         target=y,
         series="Hermite",
@@ -172,7 +172,7 @@ def test_train_polynomial_surrogate_hermitee_series(
 ) -> None:
     x, y = quadratic_data
 
-    surrogate, stats = train_polynomial_surrogate(
+    surrogate, stats = train_polynomial(
         feature=x,
         target=y,
         series="HermiteE",
@@ -194,7 +194,7 @@ def test_train_polynomial_surrogate_with_args_and_stoichiometries(
     surrogate_args = ["x"]
     surrogate_stoichiometries = {"r1": {"x": -1.0, "y": 1.0}}
 
-    surrogate, stats = train_polynomial_surrogate(
+    surrogate, stats = train_polynomial(
         feature=x,
         target=y,
         series="Power",

@@ -6,8 +6,9 @@ import torch
 from torch import nn
 
 from mxlpy.npe import (
-    TorchSSEstimator,
+    TorchSteadyStateEstimator,
     TorchTimeCourseEstimator,
+    _mean_abs,
     _train_batched,
     _train_full,
     train_torch_ss_estimator,
@@ -94,7 +95,7 @@ def test_torch_ss_estimator(ss_data: tuple[pd.DataFrame, pd.DataFrame]) -> None:
     features, targets = ss_data
     model = SimpleModel(n_inputs=2, n_outputs=2)
 
-    estimator = TorchSSEstimator(model=model, parameter_names=["p1", "p2"])
+    estimator = TorchSteadyStateEstimator(model=model, parameter_names=["p1", "p2"])
 
     predictions = estimator.predict(features)
     assert predictions.shape == (5, 2)
@@ -126,6 +127,7 @@ def test_train_full() -> None:
         targets=targets,
         epochs=5,
         optimizer=optimizer,
+        loss_fn=_mean_abs,
     )
 
     assert isinstance(losses, pd.Series)
@@ -150,6 +152,7 @@ def test_train_batched() -> None:
         epochs=5,
         optimizer=optimizer,
         batch_size=2,
+        loss_fn=_mean_abs,
     )
 
     assert isinstance(losses, pd.Series)
@@ -164,7 +167,7 @@ def test_train_torch_ss_estimator(ss_data: tuple[pd.DataFrame, pd.DataFrame]) ->
         features=features, targets=targets, epochs=5, batch_size=2
     )
 
-    assert isinstance(estimator, TorchSSEstimator)
+    assert isinstance(estimator, TorchSteadyStateEstimator)
     assert estimator.parameter_names == ["p1", "p2"]
     assert isinstance(losses, pd.Series)
     assert len(losses) == 5
@@ -184,7 +187,7 @@ def test_train_torch_ss_estimator_with_custom_model(
         features=features, targets=targets, epochs=5, approximator=model
     )
 
-    assert isinstance(estimator, TorchSSEstimator)
+    assert isinstance(estimator, TorchSteadyStateEstimator)
     assert estimator.model is model
     assert estimator.parameter_names == ["p1", "p2"]
     assert isinstance(losses, pd.Series)

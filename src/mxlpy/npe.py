@@ -11,17 +11,6 @@ Functions:
 
 from __future__ import annotations
 
-__all__ = [
-    "AbstractEstimator",
-    "DefaultCache",
-    "TorchSSEstimator",
-    "TorchSteadyStateTrainer",
-    "TorchTimeCourseEstimator",
-    "TorchTimeCourseTrainer",
-    "train_torch_ss_estimator",
-    "train_torch_time_course_estimator",
-]
-
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,6 +33,34 @@ if TYPE_CHECKING:
 
 DefaultCache = Cache(Path(".cache"))
 
+type LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+
+__all__ = [
+    "AbstractEstimator",
+    "DefaultCache",
+    "LossFn",
+    "TorchSteadyStateEstimator",
+    "TorchSteadyStateTrainer",
+    "TorchTimeCourseEstimator",
+    "TorchTimeCourseTrainer",
+    "train_torch_ss_estimator",
+    "train_torch_time_course_estimator",
+]
+
+
+def _mean_abs(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """Standard loss for surrogates.
+
+    Args:
+        x: Predictions of a model.
+        y: Targets.
+
+    Returns:
+        torch.Tensor: loss.
+
+    """
+    return torch.mean(torch.abs(x - y))
+
 
 @dataclass(kw_only=True)
 class AbstractEstimator:
@@ -57,7 +74,7 @@ class AbstractEstimator:
 
 
 @dataclass(kw_only=True)
-class TorchSSEstimator(AbstractEstimator):
+class TorchSteadyStateEstimator(AbstractEstimator):
     """Estimator for steady state data using PyTorch models."""
 
     model: torch.nn.Module
@@ -96,50 +113,6 @@ class TorchTimeCourseEstimator(AbstractEstimator):
             return pd.DataFrame(pred, columns=self.parameter_names)
 
 
-def _train_batched(
-    approximator: nn.Module,
-    features: torch.Tensor,
-    targets: torch.Tensor,
-    epochs: int,
-    optimizer: Adam,
-    batch_size: int,
-) -> pd.Series:
-    losses = {}
-    for epoch in tqdm.trange(epochs):
-        permutation = torch.randperm(features.size()[0])
-        epoch_loss = 0
-        for i in range(0, features.size()[0], batch_size):
-            optimizer.zero_grad()
-            indices = permutation[i : i + batch_size]
-
-            loss = torch.mean(
-                torch.abs(approximator(features[indices]) - targets[indices])
-            )
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.detach().numpy()
-
-        losses[epoch] = epoch_loss / (features.size()[0] / batch_size)
-    return pd.Series(losses, dtype=float)
-
-
-def _train_full(
-    approximator: nn.Module,
-    features: torch.Tensor,
-    targets: torch.Tensor,
-    epochs: int,
-    optimizer: Adam,
-) -> pd.Series:
-    losses = {}
-    for i in tqdm.trange(epochs):
-        optimizer.zero_grad()
-        loss = torch.mean(torch.abs(approximator(features) - targets))
-        loss.backward()
-        optimizer.step()
-        losses[i] = loss.detach().numpy()
-    return pd.Series(losses, dtype=float)
-
-
 @dataclass
 class TorchSteadyStateTrainer:
     """Trainer for steady state data using PyTorch models."""
@@ -150,6 +123,7 @@ class TorchSteadyStateTrainer:
     optimimzer: Adam
     device: torch.device
     losses: list[pd.Series]
+    loss_fn: LossFn
 
     def __init__(
         self,
@@ -158,6 +132,7 @@ class TorchSteadyStateTrainer:
         approximator: nn.Module | None = None,
         optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
         device: torch.device = DefaultDevice,
+        loss_fn: LossFn = _mean_abs,
     ) -> None:
         """Initialize the trainer with features, targets, and model.
 
@@ -167,6 +142,7 @@ class TorchSteadyStateTrainer:
             approximator: Predefined neural network model (None to use default MLP)
             optimimzer_cls: Optimizer class to use for training (default: Adam)
             device: Device to run the training on (default: DefaultDevice)
+            loss_fn: Loss function
 
         """
         self.features = features
@@ -182,6 +158,7 @@ class TorchSteadyStateTrainer:
         self.approximator = approximator.to(device)
         self.optimizer = optimimzer_cls(approximator.parameters())
         self.device = device
+        self.loss_fn = loss_fn
         self.losses = []
 
     def train(
@@ -206,6 +183,7 @@ class TorchSteadyStateTrainer:
                 targets=targets,
                 epochs=epochs,
                 optimizer=self.optimizer,
+                loss_fn=self.loss_fn,
             )
         else:
             losses = _train_batched(
@@ -215,6 +193,7 @@ class TorchSteadyStateTrainer:
                 epochs=epochs,
                 optimizer=self.optimizer,
                 batch_size=batch_size,
+                loss_fn=self.loss_fn,
             )
 
         if len(self.losses) > 0:
@@ -226,54 +205,12 @@ class TorchSteadyStateTrainer:
         """Get the loss history of the training process."""
         return pd.concat(self.losses)
 
-    def get_estimator(self) -> TorchSSEstimator:
+    def get_estimator(self) -> TorchSteadyStateEstimator:
         """Get the trained estimator."""
-        return TorchSSEstimator(
+        return TorchSteadyStateEstimator(
             model=self.approximator,
             parameter_names=list(self.targets.columns),
         )
-
-
-def train_torch_ss_estimator(
-    features: pd.DataFrame,
-    targets: pd.DataFrame,
-    epochs: int,
-    batch_size: int | None = None,
-    approximator: nn.Module | None = None,
-    optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
-    device: torch.device = DefaultDevice,
-) -> tuple[TorchSSEstimator, pd.Series]:
-    """Train a PyTorch steady state estimator.
-
-    This function trains a neural network model to estimate steady state data
-    using the provided features and targets. It supports both full-batch and
-    mini-batch training.
-
-    Examples:
-        >>> train_torch_ss_estimator(features, targets, epochs=100)
-
-    Args:
-        features: DataFrame containing the input features for training
-        targets: DataFrame containing the target values for training
-        epochs: Number of training epochs
-        batch_size: Size of mini-batches for training (None for full-batch)
-        approximator: Predefined neural network model (None to use default MLP)
-        optimimzer_cls: Optimizer class to use for training (default: Adam)
-        device: Device to run the training on (default: DefaultDevice)
-
-    Returns:
-        tuple[TorchTimeSeriesEstimator, pd.Series]: Trained estimator and loss history
-
-    """
-    trainer = TorchSteadyStateTrainer(
-        features=features,
-        targets=targets,
-        approximator=approximator,
-        optimimzer_cls=optimimzer_cls,
-        device=device,
-    ).train(epochs=epochs, batch_size=batch_size)
-
-    return trainer.get_estimator(), trainer.get_loss()
 
 
 @dataclass
@@ -286,6 +223,7 @@ class TorchTimeCourseTrainer:
     optimimzer: Adam
     device: torch.device
     losses: list[pd.Series]
+    loss_fn: LossFn
 
     def __init__(
         self,
@@ -294,6 +232,7 @@ class TorchTimeCourseTrainer:
         approximator: nn.Module | None = None,
         optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
         device: torch.device = DefaultDevice,
+        loss_fn: LossFn = _mean_abs,
     ) -> None:
         """Initialize the trainer with features, targets, and model.
 
@@ -303,6 +242,7 @@ class TorchTimeCourseTrainer:
             approximator: Predefined neural network model (None to use default LSTM)
             optimimzer_cls: Optimizer class to use for training (default: Adam)
             device: Device to run the training on (default: DefaultDevice)
+            loss_fn: Loss function
 
         """
         self.features = features
@@ -317,6 +257,7 @@ class TorchTimeCourseTrainer:
         self.approximator = approximator.to(device)
         self.optimizer = optimimzer_cls(approximator.parameters())
         self.device = device
+        self.loss_fn = loss_fn
         self.losses = []
 
     def train(
@@ -350,6 +291,7 @@ class TorchTimeCourseTrainer:
                 targets=targets,
                 epochs=epochs,
                 optimizer=self.optimizer,
+                loss_fn=self.loss_fn,
             )
         else:
             losses = _train_batched(
@@ -359,6 +301,7 @@ class TorchTimeCourseTrainer:
                 epochs=epochs,
                 optimizer=self.optimizer,
                 batch_size=batch_size,
+                loss_fn=self.loss_fn,
             )
 
         if len(self.losses) > 0:
@@ -376,6 +319,91 @@ class TorchTimeCourseTrainer:
             model=self.approximator,
             parameter_names=list(self.targets.columns),
         )
+
+
+def _train_batched(
+    approximator: nn.Module,
+    features: torch.Tensor,
+    targets: torch.Tensor,
+    epochs: int,
+    optimizer: Adam,
+    batch_size: int,
+    loss_fn: LossFn,
+) -> pd.Series:
+    losses = {}
+    for epoch in tqdm.trange(epochs):
+        permutation = torch.randperm(features.size()[0])
+        epoch_loss = 0
+        for i in range(0, features.size()[0], batch_size):
+            optimizer.zero_grad()
+            indices = permutation[i : i + batch_size]
+            loss = loss_fn(approximator(features[indices]), targets[indices])
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.detach().numpy()
+
+        losses[epoch] = epoch_loss / (features.size()[0] / batch_size)
+    return pd.Series(losses, dtype=float)
+
+
+def _train_full(
+    approximator: nn.Module,
+    features: torch.Tensor,
+    targets: torch.Tensor,
+    epochs: int,
+    optimizer: Adam,
+    loss_fn: LossFn,
+) -> pd.Series:
+    losses = {}
+    for i in tqdm.trange(epochs):
+        optimizer.zero_grad()
+        loss = loss_fn(approximator(features), targets)
+        loss.backward()
+        optimizer.step()
+        losses[i] = loss.detach().numpy()
+    return pd.Series(losses, dtype=float)
+
+
+def train_torch_ss_estimator(
+    features: pd.DataFrame,
+    targets: pd.DataFrame,
+    epochs: int,
+    batch_size: int | None = None,
+    approximator: nn.Module | None = None,
+    optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
+    device: torch.device = DefaultDevice,
+) -> tuple[TorchSteadyStateEstimator, pd.Series]:
+    """Train a PyTorch steady state estimator.
+
+    This function trains a neural network model to estimate steady state data
+    using the provided features and targets. It supports both full-batch and
+    mini-batch training.
+
+    Examples:
+        >>> train_torch_ss_estimator(features, targets, epochs=100)
+
+    Args:
+        features: DataFrame containing the input features for training
+        targets: DataFrame containing the target values for training
+        epochs: Number of training epochs
+        batch_size: Size of mini-batches for training (None for full-batch)
+        approximator: Predefined neural network model (None to use default MLP)
+        optimimzer_cls: Optimizer class to use for training (default: Adam)
+        device: Device to run the training on (default: DefaultDevice)
+
+    Returns:
+        tuple[TorchTimeSeriesEstimator, pd.Series]: Trained estimator and loss history
+
+    """
+    trainer = TorchSteadyStateTrainer(
+        features=features,
+        targets=targets,
+        approximator=approximator,
+        optimimzer_cls=optimimzer_cls,
+        device=device,
+    ).train(epochs=epochs, batch_size=batch_size)
+
+    return trainer.get_estimator(), trainer.get_loss()
 
 
 def train_torch_time_course_estimator(

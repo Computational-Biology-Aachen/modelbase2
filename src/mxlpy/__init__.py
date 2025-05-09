@@ -66,7 +66,7 @@ from .scan import (
 )
 from .simulator import Simulator
 from .symbolic import SymbolicModel, to_symbolic_model
-from .types import Derived, IntegratorProtocol
+from .types import Derived, IntegratorProtocol, unwrap
 
 with contextlib.suppress(ImportError):
     from .integrators import Assimulo
@@ -104,6 +104,7 @@ __all__ = [
     "time_course",
     "time_course_over_protocol",
     "to_symbolic_model",
+    "unwrap",
 ]
 
 

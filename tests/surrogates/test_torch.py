@@ -10,7 +10,7 @@ from mxlpy.surrogates._torch import (
     TorchSurrogate,
     _train_batched,
     _train_full,
-    train_torch_surrogate,
+    train_torch,
 )
 
 
@@ -109,7 +109,7 @@ def test_train_torch_surrogate_with_default_approximator(
 ) -> None:
     features, targets = features_targets
 
-    surrogate, losses = train_torch_surrogate(
+    surrogate, losses = train_torch(
         features=features,
         targets=targets,
         epochs=3,
@@ -128,7 +128,7 @@ def test_train_torch_surrogate_with_custom_approximator(
     features, targets = features_targets
     model = SimpleModel(n_inputs=2, n_outputs=2)
 
-    surrogate, losses = train_torch_surrogate(
+    surrogate, losses = train_torch(
         features=features,
         targets=targets,
         epochs=3,
@@ -146,7 +146,7 @@ def test_train_torch_surrogate_with_batch(
 ) -> None:
     features, targets = features_targets
 
-    surrogate, losses = train_torch_surrogate(
+    surrogate, losses = train_torch(
         features=features,
         targets=targets,
         epochs=3,
@@ -166,7 +166,7 @@ def test_train_torch_surrogate_with_args_and_stoichiometries(
     surrogate_args = ["x1", "x2"]
     surrogate_stoichiometries = {"r1": {"x1": -1.0, "x2": 1.0}}
 
-    surrogate, losses = train_torch_surrogate(
+    surrogate, losses = train_torch(
         features=features,
         targets=targets,
         epochs=3,
