@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Self
 
 import numpy as np
 import pandas as pd
@@ -12,10 +13,7 @@ from torch.optim.optimizer import ParamsT
 from mxlpy.nn._torch import MLP, DefaultDevice
 from mxlpy.types import AbstractSurrogate
 
-__all__ = [
-    "TorchSurrogate",
-    "train_torch_surrogate",
-]
+__all__ = ["TorchSurrogate", "TorchSurrogateTrainer", "train_torch_surrogate"]
 
 
 @dataclass(kw_only=True)
@@ -127,6 +125,7 @@ def _train_full(
     return pd.Series(losses, dtype=float)
 
 
+<<<<<<< HEAD
 def standard_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """Standard loss for surrogates.
 
@@ -139,6 +138,86 @@ def standard_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
     """
     return torch.mean(torch.abs(x - y))
+=======
+@dataclass(init=False)
+class TorchSurrogateTrainer:
+    features: pd.DataFrame
+    targets: pd.DataFrame
+    approximator: nn.Module
+    optimizer: Adam
+    device: torch.device
+    losses: list[pd.Series]
+
+    def __init__(
+        self,
+        features: pd.DataFrame,
+        targets: pd.DataFrame,
+        approximator: nn.Module | None = None,
+        optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
+        device: torch.device = DefaultDevice,
+    ) -> None:
+        self.features = features
+        self.targets = targets
+
+        if approximator is None:
+            approximator = MLP(
+                n_inputs=len(features.columns),
+                neurons_per_layer=[50, 50, len(targets.columns)],
+            )
+        self.approximator = approximator.to(device)
+
+        self.optimizer = optimimzer_cls(approximator.parameters())
+        self.device = device
+        self.losses = []
+
+    def train(
+        self,
+        epochs: int,
+        batch_size: int | None = None,
+    ) -> Self:
+        if batch_size is None:
+            losses = _train_full(
+                aprox=self.approximator,
+                features=self.features,
+                targets=self.targets,
+                epochs=epochs,
+                optimizer=self.optimizer,
+                device=self.device,
+            )
+        else:
+            losses = _train_batched(
+                aprox=self.approximator,
+                features=self.features,
+                targets=self.targets,
+                epochs=epochs,
+                optimizer=self.optimizer,
+                device=self.device,
+                batch_size=batch_size,
+            )
+
+        if len(self.losses) > 0:
+            losses.index += self.losses[-1].index[-1]
+        self.losses.append(losses)
+        return self
+
+    def get_loss(self) -> pd.Series:
+        return pd.concat(self.losses)
+
+    def get_surrogate(
+        self,
+        surrogate_args: list[str] | None = None,
+        surrogate_outputs: list[str] | None = None,
+        surrogate_stoichiometries: dict[str, dict[str, float]] | None = None,
+    ) -> TorchSurrogate:
+        return TorchSurrogate(
+            model=self.approximator,
+            args=surrogate_args if surrogate_args is not None else [],
+            outputs=surrogate_outputs if surrogate_outputs is not None else [],
+            stoichiometries=surrogate_stoichiometries
+            if surrogate_stoichiometries is not None
+            else {},
+        )
+>>>>>>> 8d11388 (usr: new: re-entrant training)
 
 
 def train_torch_surrogate(
@@ -165,7 +244,7 @@ def train_torch_surrogate(
         ...     surrogate_stoichiometries={
         ...         "v1": {"x1": -1, "x2": 1, "ATP": -1},
         ...     },
-        ...)
+        ...)surrogate_stoichiometries
 
     Args:
         features: DataFrame containing the input features for training.
@@ -184,6 +263,7 @@ def train_torch_surrogate(
         tuple[TorchSurrogate, pd.Series]: Trained surrogate model and loss history.
 
     """
+<<<<<<< HEAD
     if approximator is None:
         approximator = MLP(
             n_inputs=len(features.columns),
@@ -223,3 +303,17 @@ def train_torch_surrogate(
         else {},
     )
     return surrogate, losses
+=======
+    trainer = TorchSurrogateTrainer(
+        features=features,
+        targets=targets,
+        approximator=approximator,
+        optimimzer_cls=optimimzer_cls,
+        device=device,
+    ).train(epochs=epochs, batch_size=batch_size)
+    return trainer.get_surrogate(
+        surrogate_args=surrogate_args,
+        surrogate_outputs=surrogate_outputs,
+        surrogate_stoichiometries=surrogate_stoichiometries,
+    ), trainer.get_loss()
+>>>>>>> 8d11388 (usr: new: re-entrant training)

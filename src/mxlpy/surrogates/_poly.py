@@ -34,8 +34,8 @@ class PolySurrogate(AbstractSurrogate):
 
 
 def train_polynomial_surrogate(
-    feature: ArrayLike,
-    target: ArrayLike,
+    feature: ArrayLike | pd.Series,
+    target: ArrayLike | pd.Series,
     series: Literal[
         "Power", "Chebyshev", "Legendre", "Laguerre", "Hermite", "HermiteE"
     ] = "Power",

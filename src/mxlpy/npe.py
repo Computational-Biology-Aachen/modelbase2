@@ -15,7 +15,9 @@ __all__ = [
     "AbstractEstimator",
     "DefaultCache",
     "TorchSSEstimator",
+    "TorchSteadyStateTrainer",
     "TorchTimeCourseEstimator",
+    "TorchTimeCourseTrainer",
     "train_torch_ss_estimator",
     "train_torch_time_course_estimator",
 ]
@@ -23,7 +25,7 @@ __all__ = [
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Self, cast
 
 import numpy as np
 import pandas as pd
@@ -103,7 +105,6 @@ def _train_batched(
     batch_size: int,
 ) -> pd.Series:
     losses = {}
-
     for epoch in tqdm.trange(epochs):
         permutation = torch.randperm(features.size()[0])
         epoch_loss = 0
@@ -139,6 +140,100 @@ def _train_full(
     return pd.Series(losses, dtype=float)
 
 
+@dataclass
+class TorchSteadyStateTrainer:
+    """Trainer for steady state data using PyTorch models."""
+
+    features: pd.DataFrame
+    targets: pd.DataFrame
+    approximator: nn.Module
+    optimimzer: Adam
+    device: torch.device
+    losses: list[pd.Series]
+
+    def __init__(
+        self,
+        features: pd.DataFrame,
+        targets: pd.DataFrame,
+        approximator: nn.Module | None = None,
+        optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
+        device: torch.device = DefaultDevice,
+    ) -> None:
+        """Initialize the trainer with features, targets, and model.
+
+        Args:
+            features: DataFrame containing the input features for training
+            targets: DataFrame containing the target values for training
+            approximator: Predefined neural network model (None to use default MLP)
+            optimimzer_cls: Optimizer class to use for training (default: Adam)
+            device: Device to run the training on (default: DefaultDevice)
+
+        """
+        self.features = features
+        self.targets = targets
+
+        if approximator is None:
+            n_hidden = max(2 * len(features.columns) * len(targets.columns), 10)
+            n_outputs = len(targets.columns)
+            approximator = MLP(
+                n_inputs=len(features.columns),
+                neurons_per_layer=[n_hidden, n_hidden, n_outputs],
+            )
+        self.approximator = approximator.to(device)
+        self.optimizer = optimimzer_cls(approximator.parameters())
+        self.device = device
+        self.losses = []
+
+    def train(
+        self,
+        epochs: int,
+        batch_size: int | None = None,
+    ) -> Self:
+        """Train the model using the provided features and targets.
+
+        Args:
+            epochs: Number of training epochs
+            batch_size: Size of mini-batches for training (None for full-batch)
+
+        """
+        features = torch.Tensor(self.features.to_numpy(), device=self.device)
+        targets = torch.Tensor(self.targets.to_numpy(), device=self.device)
+
+        if batch_size is None:
+            losses = _train_full(
+                approximator=self.approximator,
+                features=features,
+                targets=targets,
+                epochs=epochs,
+                optimizer=self.optimizer,
+            )
+        else:
+            losses = _train_batched(
+                approximator=self.approximator,
+                features=features,
+                targets=targets,
+                epochs=epochs,
+                optimizer=self.optimizer,
+                batch_size=batch_size,
+            )
+
+        if len(self.losses) > 0:
+            losses.index += self.losses[-1].index[-1]
+        self.losses.append(losses)
+        return self
+
+    def get_loss(self) -> pd.Series:
+        """Get the loss history of the training process."""
+        return pd.concat(self.losses)
+
+    def get_estimator(self) -> TorchSSEstimator:
+        """Get the trained estimator."""
+        return TorchSSEstimator(
+            model=self.approximator,
+            parameter_names=list(self.targets.columns),
+        )
+
+
 def train_torch_ss_estimator(
     features: pd.DataFrame,
     targets: pd.DataFrame,
@@ -170,40 +265,117 @@ def train_torch_ss_estimator(
         tuple[TorchTimeSeriesEstimator, pd.Series]: Trained estimator and loss history
 
     """
-    if approximator is None:
-        n_hidden = max(2 * len(features.columns) * len(targets.columns), 10)
-        n_outputs = len(targets.columns)
-        approximator = MLP(
-            n_inputs=len(features.columns),
-            neurons_per_layer=[n_hidden, n_hidden, n_outputs],
-        ).to(device)
+    trainer = TorchSteadyStateTrainer(
+        features=features,
+        targets=targets,
+        approximator=approximator,
+        optimimzer_cls=optimimzer_cls,
+        device=device,
+    ).train(epochs=epochs, batch_size=batch_size)
 
-    features_ = torch.Tensor(features.to_numpy(), device=device)
-    targets_ = torch.Tensor(targets.to_numpy(), device=device)
+    return trainer.get_estimator(), trainer.get_loss()
 
-    optimizer = optimimzer_cls(approximator.parameters())
-    if batch_size is None:
-        losses = _train_full(
-            approximator=approximator,
-            features=features_,
-            targets=targets_,
-            epochs=epochs,
-            optimizer=optimizer,
+
+@dataclass
+class TorchTimeCourseTrainer:
+    """Trainer for time course data using PyTorch models."""
+
+    features: pd.DataFrame
+    targets: pd.DataFrame
+    approximator: nn.Module
+    optimimzer: Adam
+    device: torch.device
+    losses: list[pd.Series]
+
+    def __init__(
+        self,
+        features: pd.DataFrame,
+        targets: pd.DataFrame,
+        approximator: nn.Module | None = None,
+        optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
+        device: torch.device = DefaultDevice,
+    ) -> None:
+        """Initialize the trainer with features, targets, and model.
+
+        Args:
+            features: DataFrame containing the input features for training
+            targets: DataFrame containing the target values for training
+            approximator: Predefined neural network model (None to use default LSTM)
+            optimimzer_cls: Optimizer class to use for training (default: Adam)
+            device: Device to run the training on (default: DefaultDevice)
+
+        """
+        self.features = features
+        self.targets = targets
+
+        if approximator is None:
+            approximator = LSTM(
+                n_inputs=len(features.columns),
+                n_outputs=len(targets.columns),
+                n_hidden=1,
+            ).to(device)
+        self.approximator = approximator.to(device)
+        self.optimizer = optimimzer_cls(approximator.parameters())
+        self.device = device
+        self.losses = []
+
+    def train(
+        self,
+        epochs: int,
+        batch_size: int | None = None,
+    ) -> Self:
+        """Train the model using the provided features and targets.
+
+        Args:
+            epochs: Number of training epochs
+            batch_size: Size of mini-batches for training (None for full-batch)
+
+        """
+        features = torch.Tensor(
+            np.swapaxes(
+                self.features.to_numpy().reshape(
+                    (len(self.targets), -1, len(self.features.columns))
+                ),
+                axis1=0,
+                axis2=1,
+            ),
+            device=self.device,
         )
-    else:
-        losses = _train_batched(
-            approximator=approximator,
-            features=features_,
-            targets=targets_,
-            epochs=epochs,
-            optimizer=optimizer,
-            batch_size=batch_size,
-        )
+        targets = torch.Tensor(self.targets.to_numpy(), device=self.device)
 
-    return TorchSSEstimator(
-        model=approximator,
-        parameter_names=list(targets.columns),
-    ), losses
+        if batch_size is None:
+            losses = _train_full(
+                approximator=self.approximator,
+                features=features,
+                targets=targets,
+                epochs=epochs,
+                optimizer=self.optimizer,
+            )
+        else:
+            losses = _train_batched(
+                approximator=self.approximator,
+                features=features,
+                targets=targets,
+                epochs=epochs,
+                optimizer=self.optimizer,
+                batch_size=batch_size,
+            )
+
+        if len(self.losses) > 0:
+            losses.index += self.losses[-1].index[-1]
+        self.losses.append(losses)
+        return self
+
+    def get_loss(self) -> pd.Series:
+        """Get the loss history of the training process."""
+        return pd.concat(self.losses)
+
+    def get_estimator(self) -> TorchTimeCourseEstimator:
+        """Get the trained estimator."""
+        return TorchTimeCourseEstimator(
+            model=self.approximator,
+            parameter_names=list(self.targets.columns),
+        )
 
 
 def train_torch_time_course_estimator(
@@ -237,41 +409,12 @@ def train_torch_time_course_estimator(
         tuple[TorchTimeSeriesEstimator, pd.Series]: Trained estimator and loss history
 
     """
-    if approximator is None:
-        approximator = LSTM(
-            n_inputs=len(features.columns),
-            n_outputs=len(targets.columns),
-            n_hidden=1,
-        ).to(device)
-
-    optimizer = optimimzer_cls(approximator.parameters())
-    features_ = torch.Tensor(
-        np.swapaxes(
-            features.to_numpy().reshape((len(targets), -1, len(features.columns))),
-            axis1=0,
-            axis2=1,
-        ),
+    trainer = TorchTimeCourseTrainer(
+        features=features,
+        targets=targets,
+        approximator=approximator,
+        optimimzer_cls=optimimzer_cls,
         device=device,
-    )
-    targets_ = torch.Tensor(targets.to_numpy(), device=device)
-    if batch_size is None:
-        losses = _train_full(
-            approximator=approximator,
-            features=features_,
-            targets=targets_,
-            epochs=epochs,
-            optimizer=optimizer,
-        )
-    else:
-        losses = _train_batched(
-            approximator=approximator,
-            features=features_,
-            targets=targets_,
-            epochs=epochs,
-            optimizer=optimizer,
-            batch_size=batch_size,
-        )
-    return TorchTimeCourseEstimator(
-        model=approximator,
-        parameter_names=list(targets.columns),
-    ), losses
+    ).train(epochs=epochs, batch_size=batch_size)
+
+    return trainer.get_estimator(), trainer.get_loss()
