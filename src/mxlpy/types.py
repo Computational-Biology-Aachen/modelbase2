@@ -445,6 +445,7 @@ class AbstractSurrogate:
     """
 
     args: list[str] = field(default_factory=list)
+    outputs: list[str] = field(default_factory=list)
     stoichiometries: dict[str, dict[str, float]] = field(default_factory=dict)
 
     @abstractmethod
@@ -455,7 +456,7 @@ class AbstractSurrogate:
         """Predict outputs based on input data."""
         return dict(
             zip(
-                self.stoichiometries,
+                self.outputs,
                 self.predict_raw(y),
                 strict=True,
             )
@@ -475,7 +476,7 @@ class AbstractSurrogate:
         args: pd.DataFrame,
     ) -> None:
         """Predict outputs based on input data."""
-        args[list(self.stoichiometries)] = pd.DataFrame(
+        args[self.outputs] = pd.DataFrame(
             [self.predict(y) for y in args.loc[:, self.args].to_numpy()],
             index=args.index,
             dtype=float,
@@ -491,4 +492,4 @@ class MockSurrogate(AbstractSurrogate):
         y: np.ndarray,
     ) -> dict[str, float]:
         """Predict outputs based on input data."""
-        return dict(zip(self.stoichiometries, y, strict=True))
+        return dict(zip(self.outputs, y, strict=True))

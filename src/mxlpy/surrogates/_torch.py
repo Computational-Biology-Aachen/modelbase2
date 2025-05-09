@@ -146,6 +146,7 @@ def train_torch_surrogate(
     targets: pd.DataFrame,
     epochs: int,
     surrogate_args: list[str] | None = None,
+    surrogate_outputs: list[str] | None = None,
     surrogate_stoichiometries: dict[str, dict[str, float]] | None = None,
     batch_size: int | None = None,
     approximator: nn.Module | None = None,
@@ -170,8 +171,9 @@ def train_torch_surrogate(
         features: DataFrame containing the input features for training.
         targets: DataFrame containing the target values for training.
         epochs: Number of training epochs.
-        surrogate_args: List of input variable names for the surrogate model.
-        surrogate_stoichiometries: Dictionary mapping reaction names to stoichiometries.
+        surrogate_args: Names of inputs arguments for the surrogate model.
+        surrogate_outputs: Names of output arguments from the surrogate.
+        surrogate_stoichiometries: Mapping of variables to their stoichiometries
         batch_size: Size of mini-batches for training (None for full-batch).
         approximator: Predefined neural network model (None to use default MLP features-50-50-output).
         optimimzer_cls: Optimizer class to use for training (default: Adam).
@@ -215,6 +217,7 @@ def train_torch_surrogate(
     surrogate = TorchSurrogate(
         model=approximator,
         args=surrogate_args if surrogate_args is not None else [],
+        outputs=surrogate_outputs if surrogate_outputs is not None else [],
         stoichiometries=surrogate_stoichiometries
         if surrogate_stoichiometries is not None
         else {},

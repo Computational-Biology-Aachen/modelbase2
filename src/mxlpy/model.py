@@ -18,6 +18,7 @@ import pandas as pd
 
 from mxlpy import fns
 from mxlpy.types import (
+    AbstractSurrogate,
     Array,
     Derived,
     Reaction,
@@ -27,6 +28,7 @@ from mxlpy.types import (
 __all__ = [
     "ArityMismatchError",
     "CircularDependencyError",
+    "Dependency",
     "MissingDependenciesError",
     "Model",
     "ModelCache",
@@ -36,7 +38,16 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from inspect import FullArgSpec
 
-    from mxlpy.types import AbstractSurrogate, Callable, Param, RateFn, RetType
+    from mxlpy.types import Callable, Param, RateFn, RetType
+
+
+@dataclass
+class Dependency:
+    """Container class for building dependency tree."""
+
+    name: str
+    required: set[str]
+    provided: set[str]
 
 
 class MissingDependenciesError(Exception):
@@ -145,30 +156,33 @@ def _invalidate_cache(method: Callable[Param, RetType]) -> Callable[Param, RetTy
 
 def _check_if_is_sortable(
     available: set[str],
-    elements: list[tuple[str, set[str]]],
+    elements: list[Dependency],
 ) -> None:
     all_available = available.copy()
-    for name, _ in elements:
-        all_available.add(name)
+    for dependency in elements:
+        all_available.update(dependency.provided)
 
     # Check if it can be sorted in the first place
     not_solvable = {}
-    for name, args in elements:
-        if not args.issubset(all_available):
-            not_solvable[name] = sorted(args.difference(all_available))
+    for dependency in elements:
+        if not dependency.required.issubset(all_available):
+            not_solvable[dependency.name] = sorted(
+                dependency.required.difference(all_available)
+            )
 
     if not_solvable:
         raise MissingDependenciesError(not_solvable=not_solvable)
 
 
 def _sort_dependencies(
-    available: set[str], elements: list[tuple[str, set[str]]]
+    available: set[str],
+    elements: list[Dependency],
 ) -> list[str]:
     """Sort model elements topologically based on their dependencies.
 
     Args:
         available: Set of available component names
-        elements: List of (name, dependencies) tuples to sort
+        elements: List of (name, dependencies, supplier) tuples to sort
 
     Returns:
         List of element names in dependency order
@@ -184,26 +198,27 @@ def _sort_dependencies(
     order = []
     # FIXME: what is the worst case here?
     max_iterations = len(elements) ** 2
-    queue: SimpleQueue[tuple[str, set[str]]] = SimpleQueue()
-    for k, v in elements:
-        queue.put((k, v))
+    queue: SimpleQueue[Dependency] = SimpleQueue()
+    for dependency in elements:
+        queue.put(dependency)
 
     last_name = None
     i = 0
     while True:
         try:
-            new, args = queue.get_nowait()
+            dependency = queue.get_nowait()
         except Empty:
             break
-        if args.issubset(available):
-            available.add(new)
-            order.append(new)
+        if dependency.required.issubset(available):
+            available.update(dependency.provided)
+            order.append(dependency.name)
+
         else:
-            if last_name == new:
-                order.append(new)
+            if last_name == dependency.name:
+                order.append(last_name)
                 break
-            queue.put((new, args))
-            last_name = new
+            queue.put(dependency)
+            last_name = dependency.name
         i += 1
 
         # Failure case
@@ -211,11 +226,13 @@ def _sort_dependencies(
             unsorted = []
             while True:
                 try:
-                    unsorted.append(queue.get_nowait()[0])
+                    unsorted.append(queue.get_nowait().name)
                 except Empty:
                     break
 
-            mod_to_args: dict[str, set[str]] = dict(elements)
+            mod_to_args: dict[str, set[str]] = {
+                dependency.name: dependency.required for dependency in elements
+            }
             missing = {k: mod_to_args[k].difference(available) for k in unsorted}
             raise CircularDependencyError(missing=missing)
     return order
@@ -303,7 +320,12 @@ class Model:
         to_sort = self._derived | self._reactions | self._surrogates
         order = _sort_dependencies(
             available=set(self._parameters) | set(self._variables) | {"time"},
-            elements=[(k, set(v.args)) for k, v in to_sort.items()],
+            elements=[
+                Dependency(name=k, required=set(v.args), provided={k})
+                if not isinstance(v, AbstractSurrogate)
+                else Dependency(name=k, required=set(v.args), provided=set(v.outputs))
+                for k, v in to_sort.items()
+            ],
         )
 
         # Split derived into parameters and variables
@@ -1227,6 +1249,7 @@ class Model:
         name: str,
         surrogate: AbstractSurrogate,
         args: list[str] | None = None,
+        outputs: list[str] | None = None,
         stoichiometries: dict[str, dict[str, float]] | None = None,
     ) -> Self:
         """Adds a surrogate model to the current instance.
@@ -1237,7 +1260,8 @@ class Model:
         Args:
             name (str): The name of the surrogate model.
             surrogate (AbstractSurrogate): The surrogate model instance to be added.
-            args: A list of arguments for the surrogate model.
+            args: Names of the values passed for the surrogate model.
+            outputs: Names of values produced by the surrogate model.
             stoichiometries: A dictionary mapping reaction names to stoichiometries.
 
         Returns:
@@ -1248,6 +1272,8 @@ class Model:
 
         if args is not None:
             surrogate.args = args
+        if outputs is not None:
+            surrogate.outputs = outputs
         if stoichiometries is not None:
             surrogate.stoichiometries = stoichiometries
 

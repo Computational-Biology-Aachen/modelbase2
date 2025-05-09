@@ -41,6 +41,7 @@ def train_polynomial_surrogate(
     ] = "Power",
     degrees: Iterable[int] = (1, 2, 3, 4, 5, 6, 7),
     surrogate_args: list[str] | None = None,
+    surrogate_outputs: list[str] | None = None,
     surrogate_stoichiometries: dict[str, dict[str, float]] | None = None,
 ) -> tuple[PolySurrogate, pd.DataFrame]:
     """Train a surrogate model based on function series expansion.
@@ -51,7 +52,8 @@ def train_polynomial_surrogate(
         series: Base functions for the surrogate model
         degrees: Degrees of the polynomial to fit to the data.
         surrogate_args: Additional arguments for the surrogate model.
-        surrogate_stoichiometries: Stoichiometries for the surrogate model.
+        surrogate_outputs: Names of the surrogate model outputs.
+        surrogate_stoichiometries: Mapping of variables to their stoichiometries
 
     Returns:
         PolySurrogate: Polynomial surrogate model.
@@ -86,6 +88,7 @@ def train_polynomial_surrogate(
         PolySurrogate(
             model=model,
             args=surrogate_args if surrogate_args is not None else [],
+            outputs=surrogate_outputs if surrogate_outputs is not None else [],
             stoichiometries=surrogate_stoichiometries
             if surrogate_stoichiometries is not None
             else {},
