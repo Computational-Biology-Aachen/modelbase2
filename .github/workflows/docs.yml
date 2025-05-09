@@ -36,5 +36,5 @@ jobs:
             mkdocs-material-
       - run: uv sync --extra dev --extra torch
       - run: uv run python -c "import toml;print('VERSION={}'.format(toml.load(open('pyproject.toml'))['project']['version']))" >> $GITHUB_ENV
-      - run: uv run mike deploy --push ${{ env.VERSION }}
-      - run: uv run mike set-default --push ${{ env.VERSION }}
+      - run: uv run mike deploy --push ${{ env.VERSION }} latest
+      - run: uv run mike set-default --push latest

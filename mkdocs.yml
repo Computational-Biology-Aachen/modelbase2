@@ -1,6 +1,7 @@
 site_name: mxlpy docs
 site_url: https://computational-biology-aachen.github.io/mxlpy/
 site_dir: dist
+repo_url: https://github.com/Computational-Biology-Aachen/MxlPy
 use_directory_urls: false
 
 nav:
@@ -28,6 +29,11 @@ theme:
   features:
     - content.code.copy
     - content.code.annotate
+    - search.suggest
+    - search.highlight
+    - search.share
+    - navigation.instant
+    - navigation.instant.prefetch
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -60,6 +66,7 @@ markdown_extensions:
       permalink: true
 
 plugins:
+  - search
   - mkdocs-jupyter:
       ignore_h1_titles: True
       execute: true
