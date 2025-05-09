@@ -56,6 +56,7 @@ def test_train_full(features_targets) -> None:
     features, targets = features_targets
     model = SimpleModel(n_inputs=2, n_outputs=2)
     optimizer = torch.optim.Adam(model.parameters())
+    loss = torch.nn.MSELoss()
 
     losses = _train_full(
         aprox=model,
@@ -64,6 +65,7 @@ def test_train_full(features_targets) -> None:
         epochs=3,
         optimizer=optimizer,
         device=torch.device("cpu"),
+        loss_fn=loss,
     )
 
     assert isinstance(losses, pd.Series)
@@ -79,6 +81,7 @@ def test_train_batched(features_targets) -> None:
     features, targets = features_targets
     model = SimpleModel(n_inputs=2, n_outputs=2)
     optimizer = torch.optim.Adam(model.parameters())
+    loss = torch.nn.MSELoss()
 
     losses = _train_batched(
         aprox=model,
@@ -88,6 +91,7 @@ def test_train_batched(features_targets) -> None:
         optimizer=optimizer,
         device=torch.device("cpu"),
         batch_size=2,
+        loss_fn=loss,
     )
 
     assert isinstance(losses, pd.Series)
