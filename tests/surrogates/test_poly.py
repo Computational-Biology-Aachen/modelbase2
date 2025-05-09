@@ -6,7 +6,7 @@ import pytest
 from numpy import polynomial
 
 from mxlpy.surrogates._poly import (
-    PolySurrogate,
+    Polynomial,
     train_polynomial,
 )
 
@@ -28,7 +28,7 @@ def quadratic_data() -> tuple[np.ndarray, np.ndarray]:
 def test_poly_surrogate_predict_raw() -> None:
     # Create a simple polynomial: y = 2x + 3
     poly = polynomial.polynomial.Polynomial([3, 2])
-    surrogate = PolySurrogate(
+    surrogate = Polynomial(
         model=poly,
         args=["x"],
         outputs=["y"],
@@ -58,7 +58,7 @@ def test_train_polynomial_surrogate_power_series(
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, PolySurrogate)
+    assert isinstance(surrogate, Polynomial)
     assert isinstance(surrogate.model, polynomial.polynomial.Polynomial)
 
     # Check stats dataframe
@@ -86,7 +86,7 @@ def test_train_polynomial_surrogate_chebyshev_series(
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, PolySurrogate)
+    assert isinstance(surrogate, Polynomial)
     assert isinstance(surrogate.model, polynomial.chebyshev.Chebyshev)
 
     # Check stats dataframe
@@ -114,7 +114,7 @@ def test_train_polynomial_surrogate_legendre_series(
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, PolySurrogate)
+    assert isinstance(surrogate, Polynomial)
     assert isinstance(surrogate.model, polynomial.legendre.Legendre)
 
     # Check stats dataframe
@@ -139,7 +139,7 @@ def test_train_polynomial_surrogate_laguerre_series(
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, PolySurrogate)
+    assert isinstance(surrogate, Polynomial)
     assert isinstance(surrogate.model, polynomial.laguerre.Laguerre)
 
     # Test predictions with the best model
@@ -159,7 +159,7 @@ def test_train_polynomial_surrogate_hermite_series(
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, PolySurrogate)
+    assert isinstance(surrogate, Polynomial)
     assert isinstance(surrogate.model, polynomial.hermite.Hermite)
 
     # Test predictions with the best model
@@ -179,7 +179,7 @@ def test_train_polynomial_surrogate_hermitee_series(
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, PolySurrogate)
+    assert isinstance(surrogate, Polynomial)
     assert isinstance(surrogate.model, polynomial.hermite_e.HermiteE)
 
     # Test predictions with the best model

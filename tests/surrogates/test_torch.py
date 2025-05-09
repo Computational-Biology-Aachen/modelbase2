@@ -7,7 +7,7 @@ import torch
 from torch import nn
 
 from mxlpy.surrogates._torch import (
-    TorchSurrogate,
+    Torch,
     _train_batched,
     _train_full,
     train_torch,
@@ -42,7 +42,7 @@ def features_targets() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def test_torch_surrogate_predict_raw() -> None:
     model = SimpleModel(n_inputs=2, n_outputs=2)
-    surrogate = TorchSurrogate(
+    surrogate = Torch(
         model=model,
         args=["x1", "x2"],
         outputs=["y1", "y2"],
@@ -116,7 +116,7 @@ def test_train_torch_surrogate_with_default_approximator(
         batch_size=None,  # Use full batch
     )
 
-    assert isinstance(surrogate, TorchSurrogate)
+    assert isinstance(surrogate, Torch)
     assert isinstance(surrogate.model, nn.Module)
     assert isinstance(losses, pd.Series)
     assert len(losses) == 3  # 3 epochs
@@ -135,7 +135,7 @@ def test_train_torch_surrogate_with_custom_approximator(
         approximator=model,
     )
 
-    assert isinstance(surrogate, TorchSurrogate)
+    assert isinstance(surrogate, Torch)
     assert surrogate.model is model
     assert isinstance(losses, pd.Series)
     assert len(losses) == 3
@@ -153,7 +153,7 @@ def test_train_torch_surrogate_with_batch(
         batch_size=2,
     )
 
-    assert isinstance(surrogate, TorchSurrogate)
+    assert isinstance(surrogate, Torch)
     assert isinstance(surrogate.model, nn.Module)
     assert isinstance(losses, pd.Series)
     assert len(losses) == 3
@@ -174,7 +174,7 @@ def test_train_torch_surrogate_with_args_and_stoichiometries(
         surrogate_stoichiometries=surrogate_stoichiometries,
     )
 
-    assert isinstance(surrogate, TorchSurrogate)
+    assert isinstance(surrogate, Torch)
     assert surrogate.args == surrogate_args
     assert surrogate.stoichiometries == surrogate_stoichiometries
     assert isinstance(losses, pd.Series)
@@ -186,7 +186,7 @@ def test_torch_surrogate_predict() -> None:
     model.linear.weight.data = torch.tensor([[1.0, 1.0]], dtype=torch.float32)
     model.linear.bias.data = torch.tensor([0.0], dtype=torch.float32)
 
-    surrogate = TorchSurrogate(
+    surrogate = Torch(
         model=model,
         args=["x1", "x2"],
         outputs=["r1"],

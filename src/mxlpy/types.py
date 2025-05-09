@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 __all__ = [
+    "AbstractEstimator",
     "AbstractSurrogate",
     "Array",
     "ArrayLike",
@@ -493,3 +494,14 @@ class MockSurrogate(AbstractSurrogate):
     ) -> dict[str, float]:
         """Predict outputs based on input data."""
         return dict(zip(self.outputs, y, strict=True))
+
+
+@dataclass(kw_only=True)
+class AbstractEstimator:
+    """Abstract class for parameter estimation using neural networks."""
+
+    parameter_names: list[str]
+
+    @abstractmethod
+    def predict(self, features: pd.Series | pd.DataFrame) -> pd.DataFrame:
+        """Predict the target values for the given features."""

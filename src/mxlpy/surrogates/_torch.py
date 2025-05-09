@@ -15,7 +15,12 @@ from mxlpy.types import AbstractSurrogate
 
 type LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
-__all__ = ["LossFn", "TorchSurrogate", "TorchTrainer", "train_torch"]
+__all__ = [
+    "LossFn",
+    "Torch",
+    "TorchTrainer",
+    "train_torch",
+]
 
 
 def _mean_abs(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -33,7 +38,7 @@ def _mean_abs(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 
 @dataclass(kw_only=True)
-class TorchSurrogate(AbstractSurrogate):
+class Torch(AbstractSurrogate):
     """Surrogate model using PyTorch.
 
     Attributes:
@@ -136,8 +141,8 @@ class TorchTrainer:
         surrogate_args: list[str] | None = None,
         surrogate_outputs: list[str] | None = None,
         surrogate_stoichiometries: dict[str, dict[str, float]] | None = None,
-    ) -> TorchSurrogate:
-        return TorchSurrogate(
+    ) -> Torch:
+        return Torch(
             model=self.approximator,
             args=surrogate_args if surrogate_args is not None else [],
             outputs=surrogate_outputs if surrogate_outputs is not None else [],
@@ -236,7 +241,7 @@ def train_torch(
     optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
     device: torch.device = DefaultDevice,
     loss_fn: LossFn = _mean_abs,
-) -> tuple[TorchSurrogate, pd.Series]:
+) -> tuple[Torch, pd.Series]:
     """Train a PyTorch surrogate model.
 
     Examples:

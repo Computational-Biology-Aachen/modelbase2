@@ -11,7 +11,6 @@ Functions:
 
 from __future__ import annotations
 
-from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Self, cast
@@ -25,6 +24,7 @@ from torch.optim.adam import Adam
 
 from mxlpy.nn._torch import LSTM, MLP, DefaultDevice
 from mxlpy.parallel import Cache
+from mxlpy.types import AbstractEstimator
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -36,15 +36,14 @@ DefaultCache = Cache(Path(".cache"))
 type LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
 __all__ = [
-    "AbstractEstimator",
     "DefaultCache",
     "LossFn",
-    "TorchSteadyStateEstimator",
+    "TorchSteadyState",
     "TorchSteadyStateTrainer",
-    "TorchTimeCourseEstimator",
+    "TorchTimeCourse",
     "TorchTimeCourseTrainer",
-    "train_torch_ss_estimator",
-    "train_torch_time_course_estimator",
+    "train_torch_steady_state",
+    "train_torch_time_course",
 ]
 
 
@@ -63,18 +62,7 @@ def _mean_abs(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 
 @dataclass(kw_only=True)
-class AbstractEstimator:
-    """Abstract class for parameter estimation using neural networks."""
-
-    parameter_names: list[str]
-
-    @abstractmethod
-    def predict(self, features: pd.Series | pd.DataFrame) -> pd.DataFrame:
-        """Predict the target values for the given features."""
-
-
-@dataclass(kw_only=True)
-class TorchSteadyStateEstimator(AbstractEstimator):
+class TorchSteadyState(AbstractEstimator):
     """Estimator for steady state data using PyTorch models."""
 
     model: torch.nn.Module
@@ -87,7 +75,7 @@ class TorchSteadyStateEstimator(AbstractEstimator):
 
 
 @dataclass(kw_only=True)
-class TorchTimeCourseEstimator(AbstractEstimator):
+class TorchTimeCourse(AbstractEstimator):
     """Estimator for time course data using PyTorch models."""
 
     model: torch.nn.Module
@@ -205,9 +193,9 @@ class TorchSteadyStateTrainer:
         """Get the loss history of the training process."""
         return pd.concat(self.losses)
 
-    def get_estimator(self) -> TorchSteadyStateEstimator:
+    def get_estimator(self) -> TorchSteadyState:
         """Get the trained estimator."""
-        return TorchSteadyStateEstimator(
+        return TorchSteadyState(
             model=self.approximator,
             parameter_names=list(self.targets.columns),
         )
@@ -313,9 +301,9 @@ class TorchTimeCourseTrainer:
         """Get the loss history of the training process."""
         return pd.concat(self.losses)
 
-    def get_estimator(self) -> TorchTimeCourseEstimator:
+    def get_estimator(self) -> TorchTimeCourse:
         """Get the trained estimator."""
-        return TorchTimeCourseEstimator(
+        return TorchTimeCourse(
             model=self.approximator,
             parameter_names=list(self.targets.columns),
         )
@@ -364,7 +352,7 @@ def _train_full(
     return pd.Series(losses, dtype=float)
 
 
-def train_torch_ss_estimator(
+def train_torch_steady_state(
     features: pd.DataFrame,
     targets: pd.DataFrame,
     epochs: int,
@@ -372,7 +360,7 @@ def train_torch_ss_estimator(
     approximator: nn.Module | None = None,
     optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
     device: torch.device = DefaultDevice,
-) -> tuple[TorchSteadyStateEstimator, pd.Series]:
+) -> tuple[TorchSteadyState, pd.Series]:
     """Train a PyTorch steady state estimator.
 
     This function trains a neural network model to estimate steady state data
@@ -406,7 +394,7 @@ def train_torch_ss_estimator(
     return trainer.get_estimator(), trainer.get_loss()
 
 
-def train_torch_time_course_estimator(
+def train_torch_time_course(
     features: pd.DataFrame,
     targets: pd.DataFrame,
     epochs: int,
@@ -414,7 +402,7 @@ def train_torch_time_course_estimator(
     approximator: nn.Module | None = None,
     optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
     device: torch.device = DefaultDevice,
-) -> tuple[TorchTimeCourseEstimator, pd.Series]:
+) -> tuple[TorchTimeCourse, pd.Series]:
     """Train a PyTorch time course estimator.
 
     This function trains a neural network model to estimate time course data

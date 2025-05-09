@@ -19,13 +19,13 @@ from __future__ import annotations
 import contextlib
 
 with contextlib.suppress(ImportError):
-    from ._torch import TorchSurrogate, TorchTrainer, train_torch
+    from ._torch import Torch, TorchTrainer, train_torch
 
-from ._poly import PolySurrogate, train_polynomial
+from ._poly import Polynomial, train_polynomial
 
 __all__ = [
-    "PolySurrogate",
-    "TorchSurrogate",
+    "Polynomial",
+    "Torch",
     "TorchTrainer",
     "train_polynomial",
     "train_torch",
