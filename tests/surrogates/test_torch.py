@@ -42,7 +42,12 @@ def features_targets() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def test_torch_surrogate_predict_raw() -> None:
     model = SimpleModel(n_inputs=2, n_outputs=2)
-    surrogate = TorchSurrogate(model=model, args=["x1", "x2"], stoichiometries={})
+    surrogate = TorchSurrogate(
+        model=model,
+        args=["x1", "x2"],
+        outputs=["y1", "y2"],
+        stoichiometries={},
+    )
 
     input_data = np.array([[1.0, 0.1], [2.0, 0.2]])
 
@@ -182,7 +187,10 @@ def test_torch_surrogate_predict() -> None:
     model.linear.bias.data = torch.tensor([0.0], dtype=torch.float32)
 
     surrogate = TorchSurrogate(
-        model=model, args=["x1", "x2"], stoichiometries={"r1": {"x1": -1.0, "x2": 1.0}}
+        model=model,
+        args=["x1", "x2"],
+        outputs=["r1"],
+        stoichiometries={"r1": {"x1": -1.0, "x2": 1.0}},
     )
 
     # When passed as numpy array

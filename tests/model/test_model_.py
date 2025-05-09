@@ -916,7 +916,11 @@ def test_add_surrogate_protected_name(mock_surrogate: MockSurrogate) -> None:
 def test_update_surrogate(mock_surrogate: MockSurrogate) -> None:
     model = Model()
     model.add_surrogate("surrogate1", mock_surrogate)
-    new_surrogate = MockSurrogate(args=["x"], stoichiometries={"v1": {"x": 1.0}})
+    new_surrogate = MockSurrogate(
+        args=["x"],
+        outputs=["v1"],
+        stoichiometries={"v1": {"x": 1.0}},
+    )
     model.update_surrogate("surrogate1", new_surrogate)
     assert model._surrogates["surrogate1"] == new_surrogate
 
@@ -1154,6 +1158,7 @@ def test__get_fluxes_with_surrogate() -> None:
         "surrogate1",
         MockSurrogate(
             args=["A"],
+            outputs=["flux1"],
             stoichiometries={"flux1": {"A": 1.0, "B": 1.0}},
         ),
     )
@@ -1219,6 +1224,7 @@ def test_get_fluxes_with_surrogate() -> None:
         "surrogate1",
         MockSurrogate(
             args=["A"],
+            outputs=["flux1"],
             stoichiometries={"flux1": {"A": 1.0, "B": 1.0}},
         ),
     )
@@ -1286,6 +1292,7 @@ def test_get_fluxes_time_course_with_surrogate() -> None:
         "surrogate1",
         MockSurrogate(
             args=["A"],
+            outputs=["flux1"],
             stoichiometries={"flux1": {"A": 1.0, "B": 1.0}},
         ),
     )
@@ -1357,6 +1364,7 @@ def test_call_with_surrogate() -> None:
         "surrogate1",
         MockSurrogate(
             args=["A"],
+            outputs=["flux1"],
             stoichiometries={"flux1": {"A": 1.0, "B": 1.0}},
         ),
     )
@@ -1423,6 +1431,7 @@ def test_get_right_hand_side_with_surrogate() -> None:
         "surrogate1",
         MockSurrogate(
             args=["A"],
+            outputs=["flux1"],
             stoichiometries={"flux1": {"A": 1.0, "B": 1.0}},
         ),
     )

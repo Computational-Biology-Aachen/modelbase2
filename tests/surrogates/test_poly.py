@@ -28,7 +28,12 @@ def quadratic_data() -> tuple[np.ndarray, np.ndarray]:
 def test_poly_surrogate_predict_raw() -> None:
     # Create a simple polynomial: y = 2x + 3
     poly = polynomial.polynomial.Polynomial([3, 2])
-    surrogate = PolySurrogate(model=poly, args=["x"], stoichiometries={})
+    surrogate = PolySurrogate(
+        model=poly,
+        args=["x"],
+        outputs=["y"],
+        stoichiometries={},
+    )
 
     # Test with a single input
     result_single = surrogate.predict_raw(np.array([2]))

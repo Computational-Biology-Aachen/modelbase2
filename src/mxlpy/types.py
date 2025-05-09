@@ -444,8 +444,8 @@ class AbstractSurrogate:
 
     """
 
-    args: list[str] = field(default_factory=list)
-    outputs: list[str] = field(default_factory=list)
+    args: list[str]
+    outputs: list[str]
     stoichiometries: dict[str, dict[str, float]] = field(default_factory=dict)
 
     @abstractmethod

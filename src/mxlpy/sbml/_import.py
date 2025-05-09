@@ -12,7 +12,7 @@ import libsbml
 import numpy as np  # noqa: F401  # models might need it
 import sympy
 
-from mxlpy.model import Model, _sort_dependencies
+from mxlpy.model import Dependency, Model, _sort_dependencies
 from mxlpy.paths import default_tmp_dir
 from mxlpy.sbml._data import (
     AtomicUnit,
@@ -522,7 +522,10 @@ def _codgen(name: str, sbml: Parser) -> Path:
         ^ set(variables)
         ^ set(sbml.derived)
         | {"time"},
-        elements=[(k, set(v.args)) for k, v in sbml.initial_assignment.items()],
+        elements=[
+            Dependency(name=k, required=set(v.args), provided={k})
+            for k, v in sbml.initial_assignment.items()
+        ],
     )
 
     if len(initial_assignment_order) > 0:
