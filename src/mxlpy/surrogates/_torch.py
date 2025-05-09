@@ -56,6 +56,7 @@ def _train_batched(
     optimizer: Adam,
     device: torch.device,
     batch_size: int,
+    loss_fn: Callable,
 ) -> pd.Series:
     """Train the neural network using mini-batch gradient descent.
 
@@ -67,6 +68,7 @@ def _train_batched(
         optimizer: Optimizer for training.
         device: torch device
         batch_size: Size of mini-batches for training.
+        loss_fn: Loss function
 
     Returns:
         pd.Series: Series containing the training loss history.
@@ -79,7 +81,8 @@ def _train_batched(
         X = torch.Tensor(features.iloc[idxs].to_numpy(), device=device)
         Y = torch.Tensor(targets.iloc[idxs].to_numpy(), device=device)
         optimizer.zero_grad()
-        loss = torch.mean(torch.abs(aprox(X) - Y))
+        pred = aprox(X)
+        loss = loss_fn(pred, Y)  # torch.mean(torch.abs(pred - Y))
         loss.backward()
         optimizer.step()
         losses[i] = loss.detach().numpy()
@@ -93,6 +96,7 @@ def _train_full(
     epochs: int,
     optimizer: Adam,
     device: torch.device,
+    loss_fn: Callable,
 ) -> pd.Series:
     """Train the neural network using full-batch gradient descent.
 
@@ -103,6 +107,7 @@ def _train_full(
         epochs: Number of training epochs.
         optimizer: Optimizer for training.
         device: Torch device
+        loss_fn: Loss function
 
     Returns:
         pd.Series: Series containing the training loss history.
@@ -114,11 +119,26 @@ def _train_full(
     losses = {}
     for i in tqdm.trange(epochs):
         optimizer.zero_grad()
-        loss = torch.mean(torch.abs(aprox(X) - Y))
+        pred = aprox(X)
+        loss = loss_fn(pred, Y)  # torch.mean(torch.abs(pred - Y))
         loss.backward()
         optimizer.step()
         losses[i] = loss.detach().numpy()
     return pd.Series(losses, dtype=float)
+
+
+def standard_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """Standard loss for surrogates.
+
+    Args:
+        x: Predictions of a model.
+        y: Targets.
+
+    Returns:
+        torch.Tensor: loss.
+
+    """
+    return torch.mean(torch.abs(x - y))
 
 
 def train_torch_surrogate(
@@ -131,6 +151,7 @@ def train_torch_surrogate(
     approximator: nn.Module | None = None,
     optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
     device: torch.device = DefaultDevice,
+    loss_func: Callable | None = None,
 ) -> tuple[TorchSurrogate, pd.Series]:
     """Train a PyTorch surrogate model.
 
@@ -155,6 +176,7 @@ def train_torch_surrogate(
         approximator: Predefined neural network model (None to use default MLP features-50-50-output).
         optimimzer_cls: Optimizer class to use for training (default: Adam).
         device: Device to run the training on (default: DefaultDevice).
+        loss_func: Custom loss function or instance of torch loss object
 
     Returns:
         tuple[TorchSurrogate, pd.Series]: Trained surrogate model and loss history.
@@ -166,6 +188,8 @@ def train_torch_surrogate(
             neurons_per_layer=[50, 50, len(targets.columns)],
         ).to(device)
 
+    loss_fn = standard_loss if loss_func is None else loss_func
+
     optimizer = optimimzer_cls(approximator.parameters())
     if batch_size is None:
         losses = _train_full(
@@ -175,6 +199,7 @@ def train_torch_surrogate(
             epochs=epochs,
             optimizer=optimizer,
             device=device,
+            loss_fn=loss_fn,
         )
     else:
         losses = _train_batched(
@@ -185,6 +210,7 @@ def train_torch_surrogate(
             optimizer=optimizer,
             device=device,
             batch_size=batch_size,
+            loss_fn=loss_fn,
         )
     surrogate = TorchSurrogate(
         model=approximator,
