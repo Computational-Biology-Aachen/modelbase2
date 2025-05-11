@@ -6,7 +6,7 @@
 
 [![pypi](https://img.shields.io/pypi/v/mxlpy.svg)](https://pypi.python.org/pypi/mxlpy)
 [![docs][docs-badge]][docs]
-![License](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
 ![Coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgist.github.com%2Fmarvinvanaalst%2F98ab3ce1db511de42f9871e91d85e4cd%2Fraw%2Fcoverage.json&query=%24.message&label=Coverage&color=%24.color&suffix=%20%25)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
