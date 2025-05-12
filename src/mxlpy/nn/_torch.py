@@ -8,15 +8,75 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+import numpy as np
+import pandas as pd
 import torch
+import tqdm
 from torch import nn
+from torch.utils.data import DataLoader, TensorDataset
+
+type LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-__all__ = ["DefaultDevice", "LSTM", "MLP"]
+    from torch.optim.adam import Adam
+
+    from mxlpy.types import Array
+
+__all__ = ["DefaultDevice", "LSTM", "LossFn", "MLP", "train"]
 
 DefaultDevice = torch.device("cpu")
+
+
+def train(
+    aprox: nn.Module,
+    features: Array,
+    targets: Array,
+    epochs: int,
+    optimizer: Adam,
+    device: torch.device,
+    batch_size: int | None,
+    loss_fn: LossFn,
+) -> pd.Series:
+    """Train the neural network using mini-batch gradient descent.
+
+    Args:
+        aprox: Neural network model to train.
+        features: Input features as a tensor.
+        targets: Target values as a tensor.
+        epochs: Number of training epochs.
+        optimizer: Optimizer for training.
+        device: torch device
+        batch_size: Size of mini-batches for training.
+        loss_fn: Loss function
+
+    Returns:
+        pd.Series: Series containing the training loss history.
+
+    """
+    losses = {}
+
+    data = TensorDataset(
+        torch.tensor(features.astype(np.float32), dtype=torch.float32, device=device),
+        torch.tensor(targets.astype(np.float32), dtype=torch.float32, device=device),
+    )
+    data_loader = DataLoader(
+        data,
+        batch_size=len(features) if batch_size is None else batch_size,
+        shuffle=True,
+    )
+
+    for i in tqdm.trange(epochs):
+        epoch_loss = 0
+        for xb, yb in data_loader:
+            optimizer.zero_grad()
+            loss = loss_fn(aprox(xb), yb)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item() * xb.size(0)
+        losses[i] = epoch_loss / len(data_loader.dataset)  # type: ignore
+    return pd.Series(losses, dtype=float)
 
 
 class MLP(nn.Module):

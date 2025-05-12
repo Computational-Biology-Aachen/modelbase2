@@ -18,11 +18,10 @@ from typing import TYPE_CHECKING, Self, cast
 import numpy as np
 import pandas as pd
 import torch
-import tqdm
 from torch import nn
 from torch.optim.adam import Adam
 
-from mxlpy.nn._torch import LSTM, MLP, DefaultDevice
+from mxlpy.nn._torch import LSTM, MLP, DefaultDevice, train
 from mxlpy.parallel import Cache
 from mxlpy.types import AbstractEstimator
 
@@ -161,28 +160,16 @@ class TorchSteadyStateTrainer:
             batch_size: Size of mini-batches for training (None for full-batch)
 
         """
-        features = torch.Tensor(self.features.to_numpy(), device=self.device)
-        targets = torch.Tensor(self.targets.to_numpy(), device=self.device)
-
-        if batch_size is None:
-            losses = _train_full(
-                approximator=self.approximator,
-                features=features,
-                targets=targets,
-                epochs=epochs,
-                optimizer=self.optimizer,
-                loss_fn=self.loss_fn,
-            )
-        else:
-            losses = _train_batched(
-                approximator=self.approximator,
-                features=features,
-                targets=targets,
-                epochs=epochs,
-                optimizer=self.optimizer,
-                batch_size=batch_size,
-                loss_fn=self.loss_fn,
-            )
+        losses = train(
+            aprox=self.approximator,
+            features=self.features.to_numpy(),
+            targets=self.targets.to_numpy(),
+            epochs=epochs,
+            optimizer=self.optimizer,
+            batch_size=batch_size,
+            loss_fn=self.loss_fn,
+            device=self.device,
+        )
 
         if len(self.losses) > 0:
             losses.index += self.losses[-1].index[-1]
@@ -260,37 +247,22 @@ class TorchTimeCourseTrainer:
             batch_size: Size of mini-batches for training (None for full-batch)
 
         """
-        features = torch.Tensor(
-            np.swapaxes(
+        losses = train(
+            aprox=self.approximator,
+            features=np.swapaxes(
                 self.features.to_numpy().reshape(
                     (len(self.targets), -1, len(self.features.columns))
                 ),
                 axis1=0,
                 axis2=1,
             ),
+            targets=self.targets.to_numpy(),
+            epochs=epochs,
+            optimizer=self.optimizer,
+            batch_size=batch_size,
+            loss_fn=self.loss_fn,
             device=self.device,
         )
-        targets = torch.Tensor(self.targets.to_numpy(), device=self.device)
-
-        if batch_size is None:
-            losses = _train_full(
-                approximator=self.approximator,
-                features=features,
-                targets=targets,
-                epochs=epochs,
-                optimizer=self.optimizer,
-                loss_fn=self.loss_fn,
-            )
-        else:
-            losses = _train_batched(
-                approximator=self.approximator,
-                features=features,
-                targets=targets,
-                epochs=epochs,
-                optimizer=self.optimizer,
-                batch_size=batch_size,
-                loss_fn=self.loss_fn,
-            )
 
         if len(self.losses) > 0:
             losses.index += self.losses[-1].index[-1]
@@ -307,49 +279,6 @@ class TorchTimeCourseTrainer:
             model=self.approximator,
             parameter_names=list(self.targets.columns),
         )
-
-
-def _train_batched(
-    approximator: nn.Module,
-    features: torch.Tensor,
-    targets: torch.Tensor,
-    epochs: int,
-    optimizer: Adam,
-    batch_size: int,
-    loss_fn: LossFn,
-) -> pd.Series:
-    losses = {}
-    for epoch in tqdm.trange(epochs):
-        permutation = torch.randperm(features.size()[0])
-        epoch_loss = 0
-        for i in range(0, features.size()[0], batch_size):
-            optimizer.zero_grad()
-            indices = permutation[i : i + batch_size]
-            loss = loss_fn(approximator(features[indices]), targets[indices])
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.detach().numpy()
-
-        losses[epoch] = epoch_loss / (features.size()[0] / batch_size)
-    return pd.Series(losses, dtype=float)
-
-
-def _train_full(
-    approximator: nn.Module,
-    features: torch.Tensor,
-    targets: torch.Tensor,
-    epochs: int,
-    optimizer: Adam,
-    loss_fn: LossFn,
-) -> pd.Series:
-    losses = {}
-    for i in tqdm.trange(epochs):
-        optimizer.zero_grad()
-        loss = loss_fn(approximator(features), targets)
-        loss.backward()
-        optimizer.step()
-        losses[i] = loss.detach().numpy()
-    return pd.Series(losses, dtype=float)
 
 
 def train_torch_steady_state(

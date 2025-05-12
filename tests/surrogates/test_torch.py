@@ -8,8 +8,6 @@ from torch import nn
 
 from mxlpy.surrogates._torch import (
     Torch,
-    _train_batched,
-    _train_full,
     train_torch,
 )
 
@@ -55,53 +53,6 @@ def test_torch_surrogate_predict_raw() -> None:
 
     assert isinstance(result, np.ndarray)
     assert result.shape == (2, 2)  # 2 samples, 2 outputs
-
-
-def test_train_full(features_targets: tuple[pd.DataFrame, pd.DataFrame]) -> None:
-    features, targets = features_targets
-    model = SimpleModel(n_inputs=2, n_outputs=2)
-    optimizer = torch.optim.Adam(model.parameters())
-    loss = torch.nn.MSELoss()
-
-    losses = _train_full(
-        aprox=model,
-        features=features,
-        targets=targets,
-        epochs=3,
-        optimizer=optimizer,
-        device=torch.device("cpu"),
-        loss_fn=loss,
-    )
-
-    assert isinstance(losses, pd.Series)
-    assert len(losses) == 3  # 3 epochs
-    assert losses.dtype == float
-
-    # Check if loss is decreasing or stable
-    if len(losses) > 1:
-        assert losses.iloc[-1] <= losses.iloc[0] * 1.1  # Allow small fluctuations
-
-
-def test_train_batched(features_targets: tuple[pd.DataFrame, pd.DataFrame]) -> None:
-    features, targets = features_targets
-    model = SimpleModel(n_inputs=2, n_outputs=2)
-    optimizer = torch.optim.Adam(model.parameters())
-    loss = torch.nn.MSELoss()
-
-    losses = _train_batched(
-        aprox=model,
-        features=features,
-        targets=targets,
-        epochs=3,
-        optimizer=optimizer,
-        device=torch.device("cpu"),
-        batch_size=2,
-        loss_fn=loss,
-    )
-
-    assert isinstance(losses, pd.Series)
-    assert len(losses) == 3  # 3 epochs
-    assert losses.dtype == float
 
 
 def test_train_torch_surrogate_with_default_approximator(

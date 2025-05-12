@@ -4931,7 +4931,7 @@ packages:
 - pypi: .
   name: mxlpy
   version: 0.17.0
-  sha256: c02914f863ff130c05aefeae17b77375c659b9f60dfa84038202ea085d7aac33
+  sha256: ca109dcf0bac28a26da9d41de676573b0ebb157e15b53ff30b1cbf5200f92e78
   requires_dist:
   - dill>=0.3.9
   - latexify-py>=0.4.4

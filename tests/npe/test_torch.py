@@ -8,9 +8,6 @@ from torch import nn
 from mxlpy.npe._torch import (
     TorchSteadyState,
     TorchTimeCourse,
-    _mean_abs,
-    _train_batched,
-    _train_full,
     train_torch_steady_state,
 )
 
@@ -113,51 +110,6 @@ def test_torch_time_course_estimator(
     predictions = estimator.predict(features)
     assert predictions.shape == (3, 2)  # 3 experiments, 2 parameters
     assert list(predictions.columns) == ["p1", "p2"]
-
-
-def test_train_full() -> None:
-    model = SimpleModel(n_inputs=2, n_outputs=2)
-    features = torch.tensor([[1.0, 0.1], [2.0, 0.2], [3.0, 0.3]], dtype=torch.float32)
-    targets = torch.tensor([[2.0, 0.2], [4.0, 0.4], [6.0, 0.6]], dtype=torch.float32)
-    optimizer = torch.optim.Adam(model.parameters())
-
-    losses = _train_full(
-        approximator=model,
-        features=features,
-        targets=targets,
-        epochs=5,
-        optimizer=optimizer,
-        loss_fn=_mean_abs,
-    )
-
-    assert isinstance(losses, pd.Series)
-    assert len(losses) == 5
-    assert losses.dtype == float
-
-
-def test_train_batched() -> None:
-    model = SimpleModel(n_inputs=2, n_outputs=2)
-    features = torch.tensor(
-        [[1.0, 0.1], [2.0, 0.2], [3.0, 0.3], [4.0, 0.4]], dtype=torch.float32
-    )
-    targets = torch.tensor(
-        [[2.0, 0.2], [4.0, 0.4], [6.0, 0.6], [8.0, 0.8]], dtype=torch.float32
-    )
-    optimizer = torch.optim.Adam(model.parameters())
-
-    losses = _train_batched(
-        approximator=model,
-        features=features,
-        targets=targets,
-        epochs=5,
-        optimizer=optimizer,
-        batch_size=2,
-        loss_fn=_mean_abs,
-    )
-
-    assert isinstance(losses, pd.Series)
-    assert len(losses) == 5
-    assert losses.dtype == float
 
 
 def test_train_torch_ss_estimator(ss_data: tuple[pd.DataFrame, pd.DataFrame]) -> None:

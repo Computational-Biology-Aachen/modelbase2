@@ -5,12 +5,11 @@ from typing import Self
 import numpy as np
 import pandas as pd
 import torch
-import tqdm
 from torch import nn
 from torch.optim.adam import Adam
 from torch.optim.optimizer import ParamsT
 
-from mxlpy.nn._torch import MLP, DefaultDevice
+from mxlpy.nn._torch import MLP, DefaultDevice, train
 from mxlpy.types import AbstractSurrogate
 
 type LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
@@ -106,28 +105,16 @@ class TorchTrainer:
         epochs: int,
         batch_size: int | None = None,
     ) -> Self:
-        if batch_size is None:
-            losses = _train_full(
-                aprox=self.approximator,
-                features=self.features,
-                targets=self.targets,
-                epochs=epochs,
-                optimizer=self.optimizer,
-                device=self.device,
-                loss_fn=self.loss_fn,
-            )
-        else:
-            losses = _train_batched(
-                aprox=self.approximator,
-                features=self.features,
-                targets=self.targets,
-                epochs=epochs,
-                optimizer=self.optimizer,
-                device=self.device,
-                batch_size=batch_size,
-                loss_fn=self.loss_fn,
-            )
-
+        losses = train(
+            aprox=self.approximator,
+            features=self.features.to_numpy(),
+            targets=self.targets.to_numpy(),
+            epochs=epochs,
+            optimizer=self.optimizer,
+            batch_size=batch_size,
+            device=self.device,
+            loss_fn=self.loss_fn,
+        )
         if len(self.losses) > 0:
             losses.index += self.losses[-1].index[-1]
         self.losses.append(losses)
@@ -150,83 +137,6 @@ class TorchTrainer:
             if surrogate_stoichiometries is not None
             else {},
         )
-
-
-def _train_batched(
-    aprox: nn.Module,
-    features: pd.DataFrame,
-    targets: pd.DataFrame,
-    epochs: int,
-    optimizer: Adam,
-    device: torch.device,
-    batch_size: int,
-    loss_fn: LossFn,
-) -> pd.Series:
-    """Train the neural network using mini-batch gradient descent.
-
-    Args:
-        aprox: Neural network model to train.
-        features: Input features as a tensor.
-        targets: Target values as a tensor.
-        epochs: Number of training epochs.
-        optimizer: Optimizer for training.
-        device: torch device
-        batch_size: Size of mini-batches for training.
-        loss_fn: Loss function
-
-    Returns:
-        pd.Series: Series containing the training loss history.
-
-    """
-    rng = np.random.default_rng()
-    losses = {}
-    for i in tqdm.trange(epochs):
-        idxs = rng.choice(features.index, size=batch_size)
-        X = torch.Tensor(features.iloc[idxs].to_numpy(), device=device)
-        Y = torch.Tensor(targets.iloc[idxs].to_numpy(), device=device)
-        optimizer.zero_grad()
-        loss = loss_fn(aprox(X), Y)
-        loss.backward()
-        optimizer.step()
-        losses[i] = loss.detach().numpy()
-    return pd.Series(losses, dtype=float)
-
-
-def _train_full(
-    aprox: nn.Module,
-    features: pd.DataFrame,
-    targets: pd.DataFrame,
-    epochs: int,
-    optimizer: Adam,
-    device: torch.device,
-    loss_fn: Callable,
-) -> pd.Series:
-    """Train the neural network using full-batch gradient descent.
-
-    Args:
-        aprox: Neural network model to train.
-        features: Input features as a tensor.
-        targets: Target values as a tensor.
-        epochs: Number of training epochs.
-        optimizer: Optimizer for training.
-        device: Torch device
-        loss_fn: Loss function
-
-    Returns:
-        pd.Series: Series containing the training loss history.
-
-    """
-    X = torch.Tensor(features.to_numpy(), device=device)
-    Y = torch.Tensor(targets.to_numpy(), device=device)
-
-    losses = {}
-    for i in tqdm.trange(epochs):
-        optimizer.zero_grad()
-        loss = loss_fn(aprox(X), Y)
-        loss.backward()
-        optimizer.step()
-        losses[i] = loss.detach().numpy()
-    return pd.Series(losses, dtype=float)
 
 
 def train_torch(
