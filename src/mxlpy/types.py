@@ -33,6 +33,7 @@ __all__ = [
     "McSteadyStates",
     "MockSurrogate",
     "Param",
+    "Parameter",
     "ProtocolByPars",
     "RateFn",
     "Reaction",
@@ -42,6 +43,7 @@ __all__ = [
     "RetType",
     "SteadyStates",
     "TimeCourseByPars",
+    "Variable",
     "unwrap",
     "unwrap2",
 ]
@@ -152,12 +154,37 @@ type IntegratorType = Callable[
 ]
 
 
+###############################################################################
+# Model components
+###############################################################################
+
+
+@dataclass(kw_only=True, slots=True)
+class Variable:
+    """Container for a variable."""
+
+    value: float
+    unit: str | None = None
+    source: str | None = None
+
+
+@dataclass(slots=True)
+class Parameter:
+    """Container for a parameter."""
+
+    value: float
+    unit: str | None = None
+    source: str | None = None
+
+
 @dataclass(kw_only=True, slots=True)
 class Derived:
     """Container for a derived value."""
 
     fn: RateFn
     args: list[str]
+    unit: str | None = None
+    source: str | None = None
 
     def calculate(self, dependent: dict[str, float]) -> float:
         """Calculate the derived value.
@@ -202,6 +229,8 @@ class Readout:
 
     fn: RateFn
     args: list[str]
+    unit: str | None = None
+    source: str | None = None
 
     def calculate(self, dependent: dict[str, float]) -> float:
         """Calculate the derived value.
@@ -247,6 +276,8 @@ class Reaction:
     fn: RateFn
     stoichiometry: Mapping[str, float | Derived]
     args: list[str]
+    unit: str | None = None
+    source: str | None = None
 
     def get_modifiers(self, model: Model) -> list[str]:
         """Get the modifiers of the reaction."""
@@ -290,6 +321,11 @@ class Reaction:
         except ValueError:  # e.g. numpy.where
             sub = dependent.loc[:, self.args].to_numpy()
             dependent[name] = [self.fn(*row) for row in sub]
+
+
+###############################################################################
+# Calculation results
+###############################################################################
 
 
 @dataclass(kw_only=True, slots=True)

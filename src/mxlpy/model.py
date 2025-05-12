@@ -21,6 +21,7 @@ from mxlpy.types import (
     AbstractSurrogate,
     Array,
     Derived,
+    Parameter,
     Reaction,
     Readout,
 )
@@ -36,7 +37,6 @@ __all__ = [
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from inspect import FullArgSpec
 
     from mxlpy.types import Callable, Param, RateFn, RetType
 
@@ -84,11 +84,6 @@ class CircularDependencyError(Exception):
             f"{missing_by_module}"
         )
         super().__init__(msg)
-
-
-def _get_all_args(argspec: FullArgSpec) -> list[str]:
-    kwonly = [] if argspec.kwonlyargs is None else argspec.kwonlyargs
-    return argspec.args + kwonly
 
 
 def _check_function_arity(function: Callable, arity: int) -> bool:
@@ -281,7 +276,7 @@ class Model:
 
     _ids: dict[str, str] = field(default_factory=dict)
     _variables: dict[str, float] = field(default_factory=dict)
-    _parameters: dict[str, float] = field(default_factory=dict)
+    _parameters: dict[str, Parameter] = field(default_factory=dict)
     _derived: dict[str, Derived] = field(default_factory=dict)
     _readouts: dict[str, Readout] = field(default_factory=dict)
     _reactions: dict[str, Reaction] = field(default_factory=dict)
@@ -304,7 +299,9 @@ class Model:
             ModelCache: An instance of ModelCache containing the initialized cache data.
 
         """
-        all_parameter_values: dict[str, float] = self._parameters.copy()
+        all_parameter_values: dict[str, float] = {
+            k: v.value for k, v in self._parameters.items()
+        }
         all_parameter_names: set[str] = set(all_parameter_values)
 
         # Sanity checks
@@ -438,40 +435,52 @@ class Model:
     ##########################################################################
 
     @_invalidate_cache
-    def add_parameter(self, name: str, value: float) -> Self:
+    def add_parameter(
+        self,
+        name: str,
+        value: float,
+        *,
+        unit: str | None = None,
+        source: str | None = None,
+    ) -> Self:
         """Adds a parameter to the model.
 
         Examples:
             >>> model.add_parameter("k1", 0.1)
 
         Args:
-            name (str): The name of the parameter.
-            value (float): The value of the parameter.
+            name: The name of the parameter.
+            value: The value of the parameter.
+            unit: The unit of the parameter.
+            source: The source of the parameter.
 
         Returns:
             Self: The instance of the model with the added parameter.
 
         """
         self._insert_id(name=name, ctx="parameter")
-        self._parameters[name] = value
+        self._parameters[name] = Parameter(value=value, unit=unit, source=source)
         return self
 
-    def add_parameters(self, parameters: dict[str, float]) -> Self:
+    def add_parameters(self, parameters: Mapping[str, float | Parameter]) -> Self:
         """Adds multiple parameters to the model.
 
         Examples:
             >>> model.add_parameters({"k1": 0.1, "k2": 0.2})
 
         Args:
-            parameters (dict[str, float]): A dictionary where the keys are parameter names
-                                           and the values are the corresponding parameter values.
+            parameters: A dictionary where the keys are parameter names
+                        and the values are the corresponding parameter values.
 
         Returns:
             Self: The instance of the model with the added parameters.
 
         """
         for k, v in parameters.items():
-            self.add_parameter(k, v)
+            if isinstance(v, Parameter):
+                self.add_parameter(k, v.value, unit=v.unit, source=v.source)
+            else:
+                self.add_parameter(k, v)
         return self
 
     @property
@@ -487,7 +496,7 @@ class Model:
                   and the values are parameter values (as floats).
 
         """
-        return self._parameters.copy()
+        return {k: v.value for k, v in self._parameters.items()}
 
     def get_parameter_names(self) -> list[str]:
         """Retrieve the names of the parameters.
@@ -501,6 +510,13 @@ class Model:
 
         """
         return list(self._parameters)
+
+    def display_parameters(self) -> pd.DataFrame:
+        """Retrieve the values of the parameters."""
+        return pd.DataFrame(
+            self._parameters.values(),  # type: ignore
+            index=self._parameters.keys(),  # type: ignore
+        )
 
     @_invalidate_cache
     def remove_parameter(self, name: str) -> Self:
@@ -558,7 +574,7 @@ class Model:
         if name not in self._parameters:
             msg = f"'{name}' not found in parameters"
             raise KeyError(msg)
-        self._parameters[name] = value
+        self._parameters[name].value = value
         return self
 
     def update_parameters(self, parameters: dict[str, float]) -> Self:
@@ -592,7 +608,7 @@ class Model:
             Self: The instance of the class with the updated parameter.
 
         """
-        return self.update_parameter(name, self._parameters[name] * factor)
+        return self.update_parameter(name, self._parameters[name].value * factor)
 
     def scale_parameters(self, parameters: dict[str, float]) -> Self:
         """Scales the parameters of the model.
@@ -636,7 +652,7 @@ class Model:
             Self: The instance of the model with the parameter converted to a variable.
 
         """
-        value = self._parameters[name] if initial_value is None else initial_value
+        value = self._parameters[name].value if initial_value is None else initial_value
         self.remove_parameter(name)
         self.add_variable(name, value)
 
