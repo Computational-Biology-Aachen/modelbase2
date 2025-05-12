@@ -46,9 +46,6 @@ __all__ = [
     "unwrap2",
 ]
 
-# Re-exporting some types here, because their imports have
-# changed between Python versions and I have no interest in
-# fixing it in every file
 from collections.abc import Callable, Iterator, Mapping
 from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar, cast
 
