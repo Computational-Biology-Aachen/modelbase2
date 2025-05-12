@@ -28,6 +28,7 @@ from mxlpy.types import (
 
 __all__ = [
     "InitialGuess",
+    "LossFn",
     "MinimizeFn",
     "ResidualFn",
     "SteadyStateResidualFn",
@@ -44,6 +45,21 @@ if TYPE_CHECKING:
 type InitialGuess = dict[str, float]
 type ResidualFn = Callable[[Array], float]
 type MinimizeFn = Callable[[ResidualFn, InitialGuess], dict[str, float]]
+type LossFn = Callable[
+    [
+        pd.DataFrame | pd.Series,
+        pd.DataFrame | pd.Series,
+    ],
+    float,
+]
+
+
+def _rmse(
+    y_pred: pd.DataFrame | pd.Series,
+    y_true: pd.DataFrame | pd.Series,
+) -> float:
+    """Calculate root mean square error between model and data."""
+    return cast(float, np.sqrt(np.mean(np.square(y_pred - y_true))))
 
 
 class SteadyStateResidualFn(Protocol):
@@ -109,6 +125,7 @@ def _steady_state_residual(
     model: Model,
     y0: dict[str, float] | None,
     integrator: IntegratorType,
+    loss_fn: LossFn = _rmse,
 ) -> float:
     """Calculate residual error between model steady state and experimental data.
 
@@ -119,6 +136,7 @@ def _steady_state_residual(
         y0: Initial conditions
         par_names: Names of parameters being fit
         integrator: ODE integrator class to use
+        loss_fn: Loss function to use for residual calculation
 
     Returns:
         float: Root mean square error between model and data
@@ -143,9 +161,11 @@ def _steady_state_residual(
     )
     if res is None:
         return cast(float, np.inf)
-    results_ss = res.get_combined()
-    diff = data - results_ss.loc[:, data.index]  # type: ignore
-    return cast(float, np.sqrt(np.mean(np.square(diff))))
+
+    return loss_fn(
+        res.get_combined().loc[:, cast(list, data.index)],
+        data,
+    )
 
 
 def _time_course_residual(
@@ -156,6 +176,7 @@ def _time_course_residual(
     model: Model,
     y0: dict[str, float] | None,
     integrator: IntegratorType,
+    loss_fn: LossFn = _rmse,
 ) -> float:
     """Calculate residual error between model time course and experimental data.
 
@@ -166,6 +187,7 @@ def _time_course_residual(
         y0: Initial conditions
         par_names: Names of parameters being fit
         integrator: ODE integrator class to use
+        loss_fn: Loss function to use for residual calculation
 
     Returns:
         float: Root mean square error between model and data
@@ -177,14 +199,17 @@ def _time_course_residual(
             y0=y0,
             integrator=integrator,
         )
-        .simulate_time_course(data.index)  # type: ignore
+        .simulate_time_course(cast(list, data.index))
         .get_result()
     )
     if res is None:
         return cast(float, np.inf)
     results_ss = res.get_combined()
-    diff = data - results_ss.loc[:, data.columns]  # type: ignore
-    return cast(float, np.sqrt(np.mean(np.square(diff))))
+
+    return loss_fn(
+        results_ss.loc[:, cast(list, data.columns)],
+        data,
+    )
 
 
 def steady_state(
