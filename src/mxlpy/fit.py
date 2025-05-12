@@ -33,6 +33,7 @@ __all__ = [
     "ResidualFn",
     "SteadyStateResidualFn",
     "TimeSeriesResidualFn",
+    "rmse",
     "steady_state",
     "time_course",
 ]
@@ -54,7 +55,7 @@ type LossFn = Callable[
 ]
 
 
-def _rmse(
+def rmse(
     y_pred: pd.DataFrame | pd.Series,
     y_true: pd.DataFrame | pd.Series,
 ) -> float:
@@ -74,6 +75,7 @@ class SteadyStateResidualFn(Protocol):
         model: Model,
         y0: dict[str, float],
         integrator: IntegratorType,
+        loss_fn: LossFn,
     ) -> float:
         """Calculate residual error between model steady state and experimental data."""
         ...
@@ -91,6 +93,7 @@ class TimeSeriesResidualFn(Protocol):
         model: Model,
         y0: dict[str, float],
         integrator: IntegratorType,
+        loss_fn: LossFn,
     ) -> float:
         """Calculate residual error between model time course and experimental data."""
         ...
@@ -125,7 +128,7 @@ def _steady_state_residual(
     model: Model,
     y0: dict[str, float] | None,
     integrator: IntegratorType,
-    loss_fn: LossFn = _rmse,
+    loss_fn: LossFn,
 ) -> float:
     """Calculate residual error between model steady state and experimental data.
 
@@ -176,7 +179,7 @@ def _time_course_residual(
     model: Model,
     y0: dict[str, float] | None,
     integrator: IntegratorType,
-    loss_fn: LossFn = _rmse,
+    loss_fn: LossFn,
 ) -> float:
     """Calculate residual error between model time course and experimental data.
 
@@ -220,6 +223,7 @@ def steady_state(
     minimize_fn: MinimizeFn = _default_minimize_fn,
     residual_fn: SteadyStateResidualFn = _steady_state_residual,
     integrator: IntegratorType = DefaultIntegrator,
+    loss_fn: LossFn = rmse,
 ) -> dict[str, float]:
     """Fit model parameters to steady-state experimental data.
 
@@ -235,6 +239,7 @@ def steady_state(
         minimize_fn: Function to minimize fitting error
         residual_fn: Function to calculate fitting error
         integrator: ODE integrator class
+        loss_fn: Loss function to use for residual calculation
 
     Returns:
         dict[str, float]: Fitted parameters as {parameter_name: fitted_value}
@@ -257,6 +262,7 @@ def steady_state(
             y0=y0,
             par_names=par_names,
             integrator=integrator,
+            loss_fn=loss_fn,
         ),
     )
     res = minimize_fn(fn, p0)
@@ -274,6 +280,7 @@ def time_course(
     minimize_fn: MinimizeFn = _default_minimize_fn,
     residual_fn: TimeSeriesResidualFn = _time_course_residual,
     integrator: IntegratorType = DefaultIntegrator,
+    loss_fn: LossFn = rmse,
 ) -> dict[str, float]:
     """Fit model parameters to time course of experimental data.
 
@@ -289,6 +296,7 @@ def time_course(
         minimize_fn: Function to minimize fitting error
         residual_fn: Function to calculate fitting error
         integrator: ODE integrator class
+        loss_fn: Loss function to use for residual calculation
 
     Returns:
         dict[str, float]: Fitted parameters as {parameter_name: fitted_value}
@@ -309,6 +317,7 @@ def time_course(
             y0=y0,
             par_names=par_names,
             integrator=integrator,
+            loss_fn=loss_fn,
         ),
     )
     res = minimize_fn(fn, p0)

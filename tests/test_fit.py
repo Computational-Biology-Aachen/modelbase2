@@ -31,6 +31,7 @@ def mock_ss_residual_fn(
     model: Model,  # noqa: ARG001
     y0: dict[str, float],  # noqa: ARG001
     integrator: IntegratorType,  # noqa: ARG001
+    loss_fn: fit.LossFn,  # noqa: ARG001
 ) -> float:
     return 0.0
 
@@ -42,6 +43,7 @@ def mock_ts_residual_fn(
     model: Model,  # noqa: ARG001
     y0: dict[str, float],  # noqa: ARG001
     integrator: IntegratorType,  # noqa: ARG001
+    loss_fn: fit.LossFn,  # noqa: ARG001
 ) -> float:
     return 0.0
 
@@ -112,6 +114,7 @@ def test_steady_state_residual() -> None:
         model=model,
         integrator=MockIntegrator,
         y0={"x1": 1.0},
+        loss_fn=fit.rmse,
     )
     assert residual == 0.0
 
@@ -131,6 +134,7 @@ def test_time0_series_residual() -> None:
         model=model,
         integrator=MockIntegrator,
         y0={"x1": 1.0},
+        loss_fn=fit.rmse,
     )
     assert residual == 0.0
 
