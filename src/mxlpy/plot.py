@@ -306,16 +306,16 @@ def reset_prop_cycle(ax: Axes) -> None:
 @contextlib.contextmanager
 def context(
     colors: list[str] | None = None,
-    line_width: float | None = None,
-    line_style: Linestyle | None = None,
+    linewidth: float | None = None,
+    linestyle: Linestyle | None = None,
     rc: dict[str, Any] | None = None,
 ) -> Generator[None, None, None]:
     """Context manager to set the defaults for plots.
 
     Args:
         colors: colors to use for the plot.
-        line_width: line width to use for the plot.
-        line_style: line style to use for the plot.
+        linewidth: line width to use for the plot.
+        linestyle: line style to use for the plot.
         rc: additional keyword arguments to pass to the rc context.
 
     """
@@ -324,11 +324,11 @@ def context(
     if colors is not None:
         rc["axes.prop_cycle"] = cycler(color=colors)
 
-    if line_width is not None:
-        rc["lines.linewidth"] = line_width
+    if linewidth is not None:
+        rc["lines.linewidth"] = linewidth
 
-    if line_style is not None:
-        rc["lines.linestyle"] = line_style
+    if linestyle is not None:
+        rc["lines.linestyle"] = linestyle
 
     with plt.rc_context(rc):
         yield
@@ -496,8 +496,8 @@ def lines(
     color: Color | list[Color] | None = None,
     grid: bool = True,
     legend: bool = True,
-    line_width: float | None = None,
-    line_style: Linestyle | None = None,
+    linewidth: float | None = None,
+    linestyle: Linestyle | None = None,
 ) -> FigAx:
     """Plot multiple lines on the same axis."""
     fig, ax = _default_fig_ax(ax=ax, grid=grid)
@@ -505,8 +505,8 @@ def lines(
         x.index,
         x,
         alpha=alpha,
-        linewidth=line_width,
-        linestyle=line_style,
+        linewidth=linewidth,
+        linestyle=linestyle,
         color=color,
     )
     _default_labels(ax, xlabel=x.index.name, ylabel=None)
@@ -534,8 +534,8 @@ def lines_grouped(
     sharey: bool = False,
     grid: bool = True,
     color: Color | list[list[Color]] | None = None,
-    line_width: float | None = None,
-    line_style: Linestyle | None = None,
+    linewidth: float | None = None,
+    linestyle: Linestyle | None = None,
 ) -> FigAxs:
     """Plot multiple groups of lines on separate axes."""
     fig, axs = grid_layout(
@@ -559,8 +559,8 @@ def lines_grouped(
             ax=ax,
             grid=grid,
             color=color_,
-            line_width=line_width,
-            line_style=line_style,
+            linewidth=linewidth,
+            linestyle=linestyle,
         )
 
     for i in range(len(groups), len(axs)):
@@ -578,8 +578,8 @@ def line_autogrouped(
     max_group_size: int = 6,
     grid: bool = True,
     color: Color | list[list[Color]] | None = None,
-    line_width: float | None = None,
-    line_style: Linestyle | None = None,
+    linewidth: float | None = None,
+    linestyle: Linestyle | None = None,
 ) -> FigAxs:
     """Plot a series or dataframe with lines grouped by order of magnitude."""
     group_names = _split_large_groups(
@@ -602,8 +602,8 @@ def line_autogrouped(
         row_height=row_height,
         grid=grid,
         color=color,
-        line_style=line_style,
-        line_width=line_width,
+        linestyle=linestyle,
+        linewidth=linewidth,
     )
 
 
@@ -613,8 +613,8 @@ def line_mean_std(
     label: str | None = None,
     ax: Axes | None = None,
     color: Color | None = None,
-    line_width: float | None = None,
-    line_style: Linestyle | None = None,
+    linewidth: float | None = None,
+    linestyle: Linestyle | None = None,
     alpha: float = 0.2,
     grid: bool = True,
 ) -> FigAx:
@@ -629,8 +629,8 @@ def line_mean_std(
         mean,
         color=color,
         label=label,
-        linewidth=line_width,
-        linestyle=line_style,
+        linewidth=linewidth,
+        linestyle=linestyle,
     )
     ax.fill_between(
         df.index,
@@ -651,8 +651,8 @@ def lines_mean_std_from_2d_idx(
     alpha: float = 0.2,
     grid: bool = True,
     color: Color | None = None,
-    line_width: float | None = None,
-    line_style: Linestyle | None = None,
+    linewidth: float | None = None,
+    linestyle: Linestyle | None = None,
 ) -> FigAx:
     """Plot the mean and standard deviation of a 2D indexed dataframe."""
     if len(cast(pd.MultiIndex, df.index).levels) != 2:  # noqa: PLR2004
@@ -668,8 +668,8 @@ def lines_mean_std_from_2d_idx(
             alpha=alpha,
             ax=ax,
             color=color,
-            line_style=line_style,
-            line_width=line_width,
+            linestyle=linestyle,
+            linewidth=linewidth,
         )
     ax.legend()
     return fig, ax
@@ -1017,8 +1017,8 @@ def relative_label_distribution(
     sharey: bool = False,
     grid: bool = True,
     color: Color | None = None,
-    line_width: float | None = None,
-    line_style: Linestyle | None = None,
+    linewidth: float | None = None,
+    linestyle: Linestyle | None = None,
 ) -> FigAxs:
     """Plot the relative distribution of labels in the given data."""
     variables = list(mapper.label_variables) if subset is None else subset
@@ -1042,8 +1042,8 @@ def relative_label_distribution(
                     labels.index,
                     (labels.sum(axis=1) / total),
                     label=f"C{i + 1}",
-                    linewidth=line_width,
-                    linestyle=line_style,
+                    linewidth=linewidth,
+                    linestyle=linestyle,
                     color=color,
                 )
             ax.set_title(name)
@@ -1057,8 +1057,8 @@ def relative_label_distribution(
             ax.plot(
                 concs.index,
                 concs.loc[:, isos],
-                linewidth=line_width,
-                linestyle=line_style,
+                linewidth=linewidth,
+                linestyle=linestyle,
                 color=color,
             )
             ax.set_title(name)
