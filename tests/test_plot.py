@@ -192,7 +192,7 @@ def test_heatmap_annotated(sample_dataframe: pd.DataFrame) -> None:
 
 
 def test_heatmap_from_2d_idx(multiindex_dataframe: pd.DataFrame) -> None:
-    fig, ax = heatmap_from_2d_idx(multiindex_dataframe, "A")
+    fig, ax, qm = heatmap_from_2d_idx(multiindex_dataframe, "A")
     assert isinstance(fig, Figure)
     assert isinstance(ax, Axes)
     assert len(ax.collections) >= 1  # For the heatmap

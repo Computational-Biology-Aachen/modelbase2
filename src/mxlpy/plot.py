@@ -23,9 +23,12 @@ import contextlib
 from cycler import cycler
 
 __all__ = [
+    "Color",
     "FigAx",
     "FigAxs",
     "Linestyle",
+    "RGB",
+    "RGBA",
     "add_grid",
     "bars",
     "context",
@@ -71,7 +74,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mxlpy.label_map import LabelMapper
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Iterable
 
     from matplotlib.collections import QuadMesh
 
@@ -88,6 +91,11 @@ type Linestyle = Literal[
     "dashed",
     "dashdot",
 ]
+
+
+type RGB = tuple[float, float, float]
+type RGBA = tuple[float, float, float, float]
+type Color = str | RGB | RGBA
 
 ##########################################################################
 # Helpers
@@ -133,6 +141,13 @@ def _get_norm(vmin: float, vmax: float) -> Normalize:
     return norm
 
 
+def _norm(df: pd.DataFrame) -> Normalize:
+    """Get a normalization object for the given data."""
+    vmin = df.min().min()
+    vmax = df.max().max()
+    return _get_norm(vmin, vmax)
+
+
 def _norm_with_zero_center(df: pd.DataFrame) -> Normalize:
     """Get a normalization object with zero-centered values for the given data."""
     v = max(abs(df.min().min()), abs(df.max().max()))
@@ -166,7 +181,7 @@ def _split_large_groups[T](groups: list[list[T]], max_size: int) -> list[list[T]
     )  # type: ignore
 
 
-def _default_color(ax: Axes, color: str | None) -> str:
+def _default_color(ax: Axes, color: Color | None) -> Color:
     """Get a default color for the given axis."""
     return f"C{len(ax.lines)}" if color is None else color
 
@@ -477,9 +492,12 @@ def lines(
     x: pd.DataFrame | pd.Series,
     *,
     ax: Axes | None = None,
-    grid: bool = True,
     alpha: float = 1.0,
+    color: Color | list[Color] | None = None,
+    grid: bool = True,
     legend: bool = True,
+    line_width: float | None = None,
+    line_style: Linestyle | None = None,
 ) -> FigAx:
     """Plot multiple lines on the same axis."""
     fig, ax = _default_fig_ax(ax=ax, grid=grid)
@@ -487,6 +505,9 @@ def lines(
         x.index,
         x,
         alpha=alpha,
+        linewidth=line_width,
+        linestyle=line_style,
+        color=color,
     )
     _default_labels(ax, xlabel=x.index.name, ylabel=None)
     if legend:
@@ -495,6 +516,12 @@ def lines(
             line.set_label(name)
         ax.legend()
     return fig, ax
+
+
+def _repeat_color_if_necessary(
+    color: list[list[Color]] | Color | None, n: int
+) -> Iterable[list[Color] | Color | None]:
+    return [color] * n if not isinstance(color, list) else color
 
 
 def lines_grouped(
@@ -506,6 +533,9 @@ def lines_grouped(
     sharex: bool = True,
     sharey: bool = False,
     grid: bool = True,
+    color: Color | list[list[Color]] | None = None,
+    line_width: float | None = None,
+    line_style: Linestyle | None = None,
 ) -> FigAxs:
     """Plot multiple groups of lines on separate axes."""
     fig, axs = grid_layout(
@@ -518,8 +548,20 @@ def lines_grouped(
         grid=grid,
     )
 
-    for group, ax in zip(groups, axs, strict=False):
-        lines(group, ax=ax, grid=grid)
+    for group, ax, color_ in zip(
+        groups,
+        axs,
+        _repeat_color_if_necessary(color, n=len(groups)),
+        strict=False,
+    ):
+        lines(
+            group,
+            ax=ax,
+            grid=grid,
+            color=color_,
+            line_width=line_width,
+            line_style=line_style,
+        )
 
     for i in range(len(groups), len(axs)):
         axs[i].set_visible(False)
@@ -535,6 +577,9 @@ def line_autogrouped(
     row_height: float = 3,
     max_group_size: int = 6,
     grid: bool = True,
+    color: Color | list[list[Color]] | None = None,
+    line_width: float | None = None,
+    line_style: Linestyle | None = None,
 ) -> FigAxs:
     """Plot a series or dataframe with lines grouped by order of magnitude."""
     group_names = _split_large_groups(
@@ -556,6 +601,9 @@ def line_autogrouped(
         col_width=col_width,
         row_height=row_height,
         grid=grid,
+        color=color,
+        line_style=line_style,
+        line_width=line_width,
     )
 
 
@@ -564,7 +612,9 @@ def line_mean_std(
     *,
     label: str | None = None,
     ax: Axes | None = None,
-    color: str | None = None,
+    color: Color | None = None,
+    line_width: float | None = None,
+    line_style: Linestyle | None = None,
     alpha: float = 0.2,
     grid: bool = True,
 ) -> FigAx:
@@ -579,6 +629,8 @@ def line_mean_std(
         mean,
         color=color,
         label=label,
+        linewidth=line_width,
+        linestyle=line_style,
     )
     ax.fill_between(
         df.index,
@@ -598,6 +650,9 @@ def lines_mean_std_from_2d_idx(
     ax: Axes | None = None,
     alpha: float = 0.2,
     grid: bool = True,
+    color: Color | None = None,
+    line_width: float | None = None,
+    line_style: Linestyle | None = None,
 ) -> FigAx:
     """Plot the mean and standard deviation of a 2D indexed dataframe."""
     if len(cast(pd.MultiIndex, df.index).levels) != 2:  # noqa: PLR2004
@@ -612,25 +667,32 @@ def lines_mean_std_from_2d_idx(
             label=name,
             alpha=alpha,
             ax=ax,
+            color=color,
+            line_style=line_style,
+            line_width=line_width,
         )
     ax.legend()
     return fig, ax
 
 
-def heatmap(
-    df: pd.DataFrame,
+def _create_heatmap(
     *,
+    ax: Axes | None,
+    df: pd.DataFrame,
+    title: str | None = None,
+    xlabel: str,
+    ylabel: str,
+    xticklabels: list[str],
+    yticklabels: list[str],
+    norm: Normalize,
     annotate: bool = False,
     colorbar: bool = True,
     invert_yaxis: bool = True,
     cmap: str = "RdBu_r",
-    norm: Normalize | None = None,
-    ax: Axes | None = None,
     cax: Axes | None = None,
     sci_annotation_bounds: tuple[float, float] = (0.01, 100),
     annotation_style: str = "2g",
 ) -> tuple[Figure, Axes, QuadMesh]:
-    """Plot a heatmap of the given data."""
     fig, ax = _default_fig_ax(
         ax=ax,
         figsize=(
@@ -639,17 +701,23 @@ def heatmap(
         ),
         grid=False,
     )
-    if norm is None:
-        norm = _norm_with_zero_center(df)
 
+    # Note: pcolormesh swaps index/columns
     hm = ax.pcolormesh(df, norm=norm, cmap=cmap)
+
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+    if title is not None:
+        ax.set_title(title)
     ax.set_xticks(
         np.arange(0, len(df.columns), 1) + 0.5,
-        labels=df.columns,
+        labels=xticklabels,
     )
     ax.set_yticks(
         np.arange(0, len(df.index), 1) + 0.5,
-        labels=df.index,
+        labels=yticklabels,
     )
 
     if annotate:
@@ -666,38 +734,76 @@ def heatmap(
     return fig, ax, hm
 
 
+def heatmap(
+    df: pd.DataFrame,
+    *,
+    ax: Axes | None = None,
+    title: str | None = None,
+    annotate: bool = False,
+    colorbar: bool = True,
+    invert_yaxis: bool = True,
+    cmap: str = "RdBu_r",
+    norm: Normalize | None = None,
+    cax: Axes | None = None,
+    sci_annotation_bounds: tuple[float, float] = (0.01, 100),
+    annotation_style: str = "2g",
+) -> tuple[Figure, Axes, QuadMesh]:
+    """Plot a heatmap of the given data."""
+    return _create_heatmap(
+        ax=ax,
+        df=df,
+        title=title,
+        xlabel=df.index.name,
+        ylabel=df.columns.name,
+        xticklabels=cast(list, df.columns),
+        yticklabels=cast(list, df.index),
+        annotate=annotate,
+        colorbar=colorbar,
+        invert_yaxis=invert_yaxis,
+        cmap=cmap,
+        norm=_norm_with_zero_center(df) if norm is None else norm,
+        cax=cax,
+        sci_annotation_bounds=sci_annotation_bounds,
+        annotation_style=annotation_style,
+    )
+
+
 def heatmap_from_2d_idx(
     df: pd.DataFrame,
     variable: str,
+    *,
     ax: Axes | None = None,
-) -> FigAx:
+    annotate: bool = False,
+    colorbar: bool = True,
+    invert_yaxis: bool = False,
+    cmap: str = "viridis",
+    norm: Normalize | None = None,
+    cax: Axes | None = None,
+    sci_annotation_bounds: tuple[float, float] = (0.01, 100),
+    annotation_style: str = "2g",
+) -> tuple[Figure, Axes, QuadMesh]:
     """Plot a heatmap of a 2D indexed dataframe."""
     if len(cast(pd.MultiIndex, df.index).levels) != 2:  # noqa: PLR2004
         msg = "MultiIndex must have exactly two levels"
         raise ValueError(msg)
+    df2d = df[variable].unstack().T
 
-    fig, ax = _default_fig_ax(ax=ax, grid=False)
-    df2d = df[variable].unstack()
-
-    ax.set_title(variable)
-    # Note: pcolormesh swaps index/columns
-    hm = ax.pcolormesh(df2d.T)
-    ax.set_xlabel(df2d.index.name)
-    ax.set_ylabel(df2d.columns.name)
-    ax.set_xticks(
-        np.arange(0, len(df2d.index), 1) + 0.5,
-        labels=[f"{i:.2f}" for i in df2d.index],
+    return _create_heatmap(
+        df=df2d,
+        xlabel=df2d.index.name,
+        ylabel=df2d.columns.name,
+        xticklabels=[f"{i:.2f}" for i in df2d.columns],
+        yticklabels=[f"{i:.2f}" for i in df2d.index],
+        ax=ax,
+        cax=cax,
+        annotate=annotate,
+        colorbar=colorbar,
+        invert_yaxis=invert_yaxis,
+        cmap=cmap,
+        norm=_norm(df2d) if norm is None else norm,
+        sci_annotation_bounds=sci_annotation_bounds,
+        annotation_style=annotation_style,
     )
-    ax.set_yticks(
-        np.arange(0, len(df2d.columns), 1) + 0.5,
-        labels=[f"{i:.2f}" for i in df2d.columns],
-    )
-
-    rotate_xlabels(ax, rotation=45, ha="right")
-
-    # Add colorbar
-    fig.colorbar(hm, ax=ax)
-    return fig, ax
 
 
 def heatmaps_from_2d_idx(
@@ -708,6 +814,13 @@ def heatmaps_from_2d_idx(
     row_height_factor: float = 0.6,
     sharex: bool = True,
     sharey: bool = False,
+    annotate: bool = False,
+    colorbar: bool = True,
+    invert_yaxis: bool = False,
+    cmap: str = "viridis",
+    norm: Normalize | None = None,
+    sci_annotation_bounds: tuple[float, float] = (0.01, 100),
+    annotation_style: str = "2g",
 ) -> FigAxs:
     """Plot multiple heatmaps of a 2D indexed dataframe."""
     idx = cast(pd.MultiIndex, df.index)
@@ -722,7 +835,18 @@ def heatmaps_from_2d_idx(
         grid=False,
     )
     for ax, var in zip(axs, df.columns, strict=False):
-        heatmap_from_2d_idx(df, var, ax=ax)
+        heatmap_from_2d_idx(
+            df,
+            var,
+            ax=ax,
+            annotate=annotate,
+            colorbar=colorbar,
+            invert_yaxis=invert_yaxis,
+            cmap=cmap,
+            norm=norm,
+            sci_annotation_bounds=sci_annotation_bounds,
+            annotation_style=annotation_style,
+        )
     return fig, axs
 
 
@@ -892,6 +1016,9 @@ def relative_label_distribution(
     row_height: float = 3,
     sharey: bool = False,
     grid: bool = True,
+    color: Color | None = None,
+    line_width: float | None = None,
+    line_style: Linestyle | None = None,
 ) -> FigAxs:
     """Plot the relative distribution of labels in the given data."""
     variables = list(mapper.label_variables) if subset is None else subset
@@ -903,20 +1030,37 @@ def relative_label_distribution(
         sharey=sharey,
         grid=grid,
     )
+    # FIXME: rewrite as building a dict of dataframes
+    # and passing it to lines_grouped
     if isinstance(mapper, LabelMapper):
         for ax, name in zip(axs, variables, strict=False):
             for i in range(mapper.label_variables[name]):
                 isos = mapper.get_isotopomers_of_at_position(name, i)
                 labels = cast(pd.DataFrame, concs.loc[:, isos])
                 total = concs.loc[:, f"{name}__total"]
-                ax.plot(labels.index, (labels.sum(axis=1) / total), label=f"C{i + 1}")
+                ax.plot(
+                    labels.index,
+                    (labels.sum(axis=1) / total),
+                    label=f"C{i + 1}",
+                    linewidth=line_width,
+                    linestyle=line_style,
+                    color=color,
+                )
             ax.set_title(name)
             ax.legend()
     else:
         for ax, (name, isos) in zip(
-            axs, mapper.get_isotopomers(variables).items(), strict=False
+            axs,
+            mapper.get_isotopomers(variables).items(),
+            strict=False,
         ):
-            ax.plot(concs.index, concs.loc[:, isos])
+            ax.plot(
+                concs.index,
+                concs.loc[:, isos],
+                linewidth=line_width,
+                linestyle=line_style,
+                color=color,
+            )
             ax.set_title(name)
             ax.legend([f"C{i + 1}" for i in range(len(isos))])
 
