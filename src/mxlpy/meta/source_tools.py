@@ -434,5 +434,5 @@ def _handle_call(node: ast.Call, ctx: Context) -> sympy.Expr:
                 ctx=ctx.updated(parent_module=imports[module_name.id]),
             )
 
-    msg = f"Onsupported function type {node.func}"
+    msg = f"Unsupported function type {node.func}"
     raise NotImplementedError(msg)
