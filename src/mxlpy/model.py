@@ -38,6 +38,8 @@ __all__ = [
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
+    from sympy.physics.units import Quantity
+
     from mxlpy.types import Callable, Param, RateFn, RetType
 
 
@@ -440,7 +442,7 @@ class Model:
         name: str,
         value: float,
         *,
-        unit: str | None = None,
+        unit: Quantity | None = None,
         source: str | None = None,
     ) -> Self:
         """Adds a parameter to the model.
@@ -513,10 +515,15 @@ class Model:
 
     def display_parameters(self) -> pd.DataFrame:
         """Retrieve the values of the parameters."""
-        return pd.DataFrame(
+        pars = pd.DataFrame(
             self._parameters.values(),  # type: ignore
             index=self._parameters.keys(),  # type: ignore
         )
+
+        # import sympy
+        # pars["unit"] = pars["unit"].apply(sympy.latex)
+
+        return pars
 
     @_invalidate_cache
     def remove_parameter(self, name: str) -> Self:

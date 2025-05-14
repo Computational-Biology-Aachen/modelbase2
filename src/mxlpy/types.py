@@ -66,6 +66,8 @@ RetType = TypeVar("RetType")
 
 
 if TYPE_CHECKING:
+    from sympy.physics.units import Quantity
+
     from mxlpy.model import Model
 
 
@@ -173,7 +175,7 @@ class Parameter:
     """Container for a parameter."""
 
     value: float
-    unit: str | None = None
+    unit: Quantity | None = None
     source: str | None = None
 
 
@@ -183,7 +185,7 @@ class Derived:
 
     fn: RateFn
     args: list[str]
-    unit: str | None = None
+    unit: Quantity | None = None
     source: str | None = None
 
     def calculate(self, dependent: dict[str, float]) -> float:
