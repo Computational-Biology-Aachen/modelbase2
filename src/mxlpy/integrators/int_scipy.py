@@ -108,13 +108,18 @@ class Scipy:
             rtol=self.rtol,
             method="LSODA",
         )
+        t = np.atleast_1d(np.array(res.t, dtype=float))
+        y = np.atleast_2d(np.array(res.y, dtype=float).T)
+
+        # Appparently scipy sometimes just returns an empty list for a failed
+        # simulation
+        if len(y) == 0:
+            return None, None
+
         if res.success:
-            self.t0 = time_points[-1]
-            self.y0 = res.y[:, -1]
-            return (
-                np.atleast_1d(np.array(time_points, dtype=float)),
-                np.atleast_2d(res.y.T),
-            )
+            self.t0 = t[-1]
+            self.y0 = y[:, -1]
+            return t, y
         return None, None
 
     def integrate_to_steady_state(
