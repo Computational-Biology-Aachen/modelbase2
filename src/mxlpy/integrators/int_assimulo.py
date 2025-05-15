@@ -97,7 +97,11 @@ class Assimulo:
         if steps is None:
             steps = 0
         try:
-            return self.integrator.simulate(t_end, steps)  # type: ignore
+            t, y = self.integrator.simulate(t_end, steps)
+            return (
+                np.atleast_1d(np.array(t, dtype=float)),
+                np.atleast_2d(np.array(y, dtype=float)),
+            )
         except CVodeError:
             return None, None
 
@@ -116,8 +120,11 @@ class Assimulo:
 
         """
         try:
-            t, y = self.integrator.simulate(time_points[-1], 0, time_points)  # type: ignore
-            return np.array(t, dtype=float), np.array(y, dtype=float)
+            t, y = self.integrator.simulate(time_points[-1], 0, time_points)
+            return (
+                np.atleast_1d(np.array(t, dtype=float)),
+                np.atleast_2d(np.array(y, dtype=float)),
+            )
         except CVodeError:
             return None, None
 

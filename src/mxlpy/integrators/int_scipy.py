@@ -111,7 +111,10 @@ class Scipy:
         if res.success:
             self.t0 = time_points[-1]
             self.y0 = res.y[:, -1]
-            return np.array(time_points, dtype=float), res.y.T
+            return (
+                np.atleast_1d(np.array(time_points, dtype=float)),
+                np.atleast_2d(res.y.T),
+            )
         return None, None
 
     def integrate_to_steady_state(
