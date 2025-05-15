@@ -67,6 +67,8 @@ optional-dependencies = { torch = [
   "pre-commit>=4.0.1",
   "pyright>=1.1.387",
   "ssort>=0.13.0",
+], tf = [
+  "tensorflow>=2.19.0",
 ] }
 
 [tool.bandit]
