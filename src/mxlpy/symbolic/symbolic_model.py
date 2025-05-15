@@ -70,6 +70,6 @@ def to_symbolic_model(model: Model) -> SymbolicModel:
         variables=variables,
         parameters=parameters,
         eqs=[eqs[i] for i in cache.var_names],
-        initial_conditions=model.variables.copy(),
-        parameter_values=model.parameters.copy(),
+        initial_conditions=model.get_initial_conditions(),
+        parameter_values=model.parameters,
     )

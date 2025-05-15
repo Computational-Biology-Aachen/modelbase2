@@ -694,7 +694,7 @@ class TexExport:
 def _to_tex_export(self: Model) -> TexExport:
     return TexExport(
         parameters=self.parameters,
-        variables=self.variables,
+        variables=self.get_initial_conditions(),  # FIXME: think about this later
         derived=self.derived,
         reactions={k: TexReaction(v.fn, v.args) for k, v in self.reactions.items()},
         stoichiometries={k: v.stoichiometry for k, v in self.reactions.items()},

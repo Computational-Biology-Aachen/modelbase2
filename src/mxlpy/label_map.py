@@ -29,6 +29,8 @@ __all__ = ["LabelMapper"]
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
 
+    from mxlpy.types import Derived
+
 
 def _total_concentration(*args: float) -> float:
     """Calculate sum of isotopomer concentrations.
@@ -552,7 +554,7 @@ class LabelMapper:
         for name, dp in self.model.derived_parameters.items():
             m.add_derived(name, fn=dp.fn, args=dp.args)
 
-        variables: dict[str, float] = {}
+        variables: dict[str, float | Derived] = {}
         for k, v in self.model.variables.items():
             if (isos := isotopomers.get(k)) is None:
                 variables[k] = v

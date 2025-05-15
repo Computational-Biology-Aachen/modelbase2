@@ -250,6 +250,7 @@ class ModelCache:
         stoich_by_cpds: A dictionary mapping compound names to their stoichiometric coefficients.
         dyn_stoich_by_cpds: A dictionary mapping compound names to their dynamic stoichiometric coefficients.
         dxdt: A pandas Series representing the rate of change of variables.
+        initial_conditions: calculated initial conditions
 
     """
 
@@ -261,6 +262,7 @@ class ModelCache:
     stoich_by_cpds: dict[str, dict[str, float]]
     dyn_stoich_by_cpds: dict[str, dict[str, Derived]]
     dxdt: pd.Series
+    initial_conditions: dict[str, float]
 
 
 @dataclass(slots=True)
@@ -280,7 +282,7 @@ class Model:
     """
 
     _ids: dict[str, str] = field(default_factory=dict)
-    _variables: dict[str, float] = field(default_factory=dict)
+    _variables: dict[str, float | Derived] = field(default_factory=dict)
     _parameters: dict[str, float] = field(default_factory=dict)
     _derived: dict[str, Derived] = field(default_factory=dict)
     _readouts: dict[str, Readout] = field(default_factory=dict)
@@ -317,9 +319,16 @@ class Model:
                 raise ArityMismatchError(name, el.fn, el.args)
 
         # Sort derived & reactions
-        to_sort = self._derived | self._reactions | self._surrogates
+        to_sort = (
+            self._derived
+            | self._reactions
+            | self._surrogates
+            | {k: v for k, v in self._variables.items() if isinstance(v, Derived)}
+        )
         order = _sort_dependencies(
-            available=set(self._parameters) | set(self._variables) | {"time"},
+            available=set(self._parameters)
+            | {k for k, v in self._variables.items() if not isinstance(v, Derived)}
+            | {"time"},
             elements=[
                 Dependency(name=k, required=set(v.args), provided={k})
                 if not isinstance(v, AbstractSurrogate)
@@ -330,11 +339,14 @@ class Model:
 
         # Split derived into parameters and variables
         # for user convenience
+        derived_initial_conditions: list[str] = []
         derived_variable_names: list[str] = []
         derived_parameter_names: list[str] = []
         for name in order:
             if name in self._reactions or name in self._surrogates:
                 continue
+            if name in self._variables:
+                derived_initial_conditions.append(name)
             derived = self._derived[name]
             if all(i in all_parameter_names for i in derived.args):
                 all_parameter_names.add(name)
@@ -354,9 +366,7 @@ class Model:
 
                 if isinstance(factor, Derived):
                     if all(i in all_parameter_names for i in factor.args):
-                        d_static[rxn_name] = float(
-                            factor.fn(*(all_parameter_values[i] for i in factor.args))
-                        )
+                        d_static[rxn_name] = factor.calculate(all_parameter_values)
                     else:
                         dyn_stoich_by_compounds.setdefault(cpd_name, {})[rxn_name] = (
                             factor
@@ -372,6 +382,15 @@ class Model:
         var_names = self.get_variable_names()
         dxdt = pd.Series(np.zeros(len(var_names), dtype=float), index=var_names)
 
+        initial_conditions: dict[str, float] = {
+            k: v for k, v in self._variables.items() if not isinstance(v, Derived)
+        }
+        for name in derived_initial_conditions:
+            der = cast(Derived, self._variables[name])
+            initial_conditions[name] = der.calculate(
+                initial_conditions | all_parameter_values
+            )
+
         self._cache = ModelCache(
             var_names=var_names,
             order=order,
@@ -381,6 +400,7 @@ class Model:
             derived_variable_names=derived_variable_names,
             derived_parameter_names=derived_parameter_names,
             dxdt=dxdt,
+            initial_conditions=initial_conditions,
         )
         return self._cache
 
@@ -662,7 +682,7 @@ class Model:
     ##########################################################################
 
     @property
-    def variables(self) -> dict[str, float]:
+    def variables(self) -> dict[str, float | Derived]:
         """Returns a copy of the variables dictionary.
 
         Examples:
@@ -679,7 +699,7 @@ class Model:
         return self._variables.copy()
 
     @_invalidate_cache
-    def add_variable(self, name: str, initial_condition: float) -> Self:
+    def add_variable(self, name: str, initial_condition: float | Derived) -> Self:
         """Adds a variable to the model with the given name and initial condition.
 
         Examples:
@@ -697,7 +717,7 @@ class Model:
         self._variables[name] = initial_condition
         return self
 
-    def add_variables(self, variables: dict[str, float]) -> Self:
+    def add_variables(self, variables: Mapping[str, float | Derived]) -> Self:
         """Adds multiple variables to the model with their initial conditions.
 
         Examples:
@@ -751,7 +771,7 @@ class Model:
         return self
 
     @_invalidate_cache
-    def update_variable(self, name: str, initial_condition: float) -> Self:
+    def update_variable(self, name: str, initial_condition: float | Derived) -> Self:
         """Updates the value of a variable in the model.
 
         Examples:
@@ -771,7 +791,7 @@ class Model:
         self._variables[name] = initial_condition
         return self
 
-    def update_variables(self, variables: dict[str, float]) -> Self:
+    def update_variables(self, variables: Mapping[str, float | Derived]) -> Self:
         """Updates multiple variables in the model.
 
         Examples:
@@ -812,7 +832,9 @@ class Model:
             initial_conditions: A dictionary where the keys are variable names and the values are their initial conditions.
 
         """
-        return self._variables
+        if (cache := self._cache) is None:
+            cache = self._create_cache()
+        return cache.initial_conditions
 
     def make_variable_static(self, name: str, value: float | None = None) -> Self:
         """Converts a variable to a static parameter.
@@ -833,9 +855,12 @@ class Model:
             Self: The instance of the class for method chaining.
 
         """
-        value = self._variables[name] if value is None else value
+        value_or_derived = self._variables[name] if value is None else value
         self.remove_variable(name)
-        self.add_parameter(name, value)
+        if isinstance(value_or_derived, Derived):
+            self.add_derived(name, value_or_derived.fn, args=value_or_derived.args)
+        else:
+            self.add_parameter(name, value_or_derived)
 
         # Remove from stoichiometries
         for reaction in self._reactions.values():

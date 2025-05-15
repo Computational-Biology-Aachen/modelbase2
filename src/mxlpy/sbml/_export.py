@@ -447,7 +447,14 @@ def _create_sbml_variables(
         cpd.setConstant(False)
         cpd.setBoundaryCondition(False)
         cpd.setHasOnlySubstanceUnits(False)
-        cpd.setInitialAmount(float(value))
+        if isinstance(value, Derived):
+            ar = sbml_model.createInitialAssignment()
+            ar.setId(_convert_id_to_sbml(id_=name, prefix="IA"))
+            ar.setName(_convert_id_to_sbml(id_=name, prefix="IA"))
+            ar.setVariable(_convert_id_to_sbml(id_=name, prefix="IA"))
+            ar.setMath(_sbmlify_fn(value.fn, value.args))
+        else:
+            cpd.setInitialAmount(float(value))
 
 
 def _create_sbml_derived_variables(*, model: Model, sbml_model: libsbml.Model) -> None:
