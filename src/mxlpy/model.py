@@ -278,6 +278,7 @@ class Model:
         _reactions: Dictionary of reactions in the model.
         _surrogates: Dictionary of surrogate models.
         _cache: Cache for storing model-related data structures.
+        _data: Named references to data sets
 
     """
 
@@ -289,6 +290,7 @@ class Model:
     _reactions: dict[str, Reaction] = field(default_factory=dict)
     _surrogates: dict[str, AbstractSurrogate] = field(default_factory=dict)
     _cache: ModelCache | None = None
+    _data: dict[str, pd.Series | pd.DataFrame] = field(default_factory=dict)
 
     ###########################################################################
     # Cache
@@ -308,6 +310,7 @@ class Model:
         """
         all_parameter_values: dict[str, float] = self._parameters.copy()
         all_parameter_names: set[str] = set(all_parameter_values)
+        dependent = all_parameter_values | self._data
 
         # Sanity checks
         for name, el in it.chain(
@@ -326,8 +329,9 @@ class Model:
             | {k: v for k, v in self._variables.items() if isinstance(v, Derived)}
         )
         order = _sort_dependencies(
-            available=set(self._parameters)
+            available=all_parameter_names
             | {k for k, v in self._variables.items() if not isinstance(v, Derived)}
+            | set(self._data)
             | {"time"},
             elements=[
                 Dependency(name=k, required=set(v.args), provided={k})
@@ -351,9 +355,9 @@ class Model:
             if all(i in all_parameter_names for i in derived.args):
                 all_parameter_names.add(name)
                 derived_parameter_names.append(name)
-                all_parameter_values[name] = float(
-                    derived.fn(*(all_parameter_values[i] for i in derived.args))
-                )
+                value = derived.calculate(dependent)
+                all_parameter_values[name] = value
+                dependent[name] = value
             else:
                 derived_variable_names.append(name)
 
@@ -366,7 +370,7 @@ class Model:
 
                 if isinstance(factor, Derived):
                     if all(i in all_parameter_names for i in factor.args):
-                        d_static[rxn_name] = factor.calculate(all_parameter_values)
+                        d_static[rxn_name] = factor.calculate(dependent)
                     else:
                         dyn_stoich_by_compounds.setdefault(cpd_name, {})[rxn_name] = (
                             factor
@@ -1363,6 +1367,27 @@ class Model:
         return names
 
     ##########################################################################
+    # Datasets
+    ##########################################################################
+
+    def add_data(self, name: str, data: pd.Series | pd.DataFrame) -> Self:
+        """Add named data set to model."""
+        self._insert_id(name=name, ctx="data")
+        self._data[name] = data
+        return self
+
+    def update_data(self, name: str, data: pd.Series | pd.DataFrame) -> Self:
+        """Update named data set."""
+        self._data[name] = data
+        return self
+
+    def remove_data(self, name: str) -> Self:
+        """Remove data set from model."""
+        self._remove_id(name=name)
+        self._data.pop(name)
+        return self
+
+    ##########################################################################
     # Get dependent values. This includes
     # - derived parameters
     # - derived variables
@@ -1396,14 +1421,17 @@ class Model:
                 with their respective names as keys and their calculated values as values.
 
         """
-        args: dict[str, float] = cache.all_parameter_values | variables
+        args = cache.all_parameter_values | variables | self._data
         args["time"] = time
 
         containers = self._derived | self._reactions | self._surrogates
         for name in cache.order:
             containers[name].calculate_inpl(name, args)
 
-        return args
+        for k in self._data:
+            args.pop(k)
+
+        return cast(dict[str, float], args)
 
     def get_dependent(
         self,
@@ -1479,29 +1507,16 @@ class Model:
             derived variables, and optionally readout variables, with time as an additional column.
 
         """
-        if (cache := self._cache) is None:
-            cache = self._create_cache()
+        args = {
+            time: self.get_dependent(
+                variables=values.to_dict(),
+                time=cast(float, time),
+                include_readouts=include_readouts,
+            )
+            for time, values in variables.iterrows()
+        }
 
-        pars_df = pd.DataFrame(
-            np.full(
-                (len(variables), len(cache.all_parameter_values)),
-                np.fromiter(cache.all_parameter_values.values(), dtype=float),
-            ),
-            index=variables.index,
-            columns=list(cache.all_parameter_values),
-        )
-
-        args = pd.concat((variables, pars_df), axis=1)
-        args["time"] = args.index
-
-        containers = self._derived | self._reactions | self._surrogates
-        for name in cache.order:
-            containers[name].calculate_inpl_time_course(name, args)
-
-        if include_readouts:
-            for name, ro in self._readouts.items():
-                args[name] = ro.fn(*args.loc[:, ro.args].to_numpy().T)
-        return args
+        return pd.DataFrame(args, dtype=float).T
 
     ##########################################################################
     # Get args
@@ -1610,7 +1625,7 @@ class Model:
         """
         fluxes: dict[str, float] = {}
         for name, rxn in self._reactions.items():
-            fluxes[name] = cast(float, rxn.fn(*(args[arg] for arg in rxn.args)))
+            fluxes[name] = rxn.calculate(args)
 
         for surrogate in self._surrogates.values():
             fluxes |= surrogate.predict(np.array([args[arg] for arg in surrogate.args]))

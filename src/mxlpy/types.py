@@ -159,7 +159,7 @@ class Derived:
     fn: RateFn
     args: list[str]
 
-    def calculate(self, dependent: dict[str, float]) -> float:
+    def calculate(self, dependent: dict[str, Any]) -> float:
         """Calculate the derived value.
 
         Args:
@@ -171,7 +171,7 @@ class Derived:
         """
         return cast(float, self.fn(*(dependent[arg] for arg in self.args)))
 
-    def calculate_inpl(self, name: str, dependent: dict[str, float]) -> None:
+    def calculate_inpl(self, name: str, dependent: dict[str, Any]) -> None:
         """Calculate the derived value in place.
 
         Args:
@@ -180,20 +180,6 @@ class Derived:
 
         """
         dependent[name] = cast(float, self.fn(*(dependent[arg] for arg in self.args)))
-
-    def calculate_inpl_time_course(self, name: str, dependent: pd.DataFrame) -> None:
-        """Calculate the derived value in place.
-
-        Args:
-            name: Name of the derived variable.
-            dependent: Dictionary of dependent variables.
-
-        """
-        try:
-            dependent[name] = self.fn(*dependent.loc[:, self.args].to_numpy().T)
-        except ValueError:  # e.g. numpy.where
-            sub = dependent.loc[:, self.args].to_numpy()
-            dependent[name] = [self.fn(*row) for row in sub]
 
 
 @dataclass(kw_only=True, slots=True)
@@ -203,7 +189,7 @@ class Readout:
     fn: RateFn
     args: list[str]
 
-    def calculate(self, dependent: dict[str, float]) -> float:
+    def calculate(self, dependent: dict[str, Any]) -> float:
         """Calculate the derived value.
 
         Args:
@@ -215,8 +201,8 @@ class Readout:
         """
         return cast(float, self.fn(*(dependent[arg] for arg in self.args)))
 
-    def calculate_inpl(self, name: str, dependent: dict[str, float]) -> None:
-        """Calculate the readout in place.
+    def calculate_inpl(self, name: str, dependent: dict[str, Any]) -> None:
+        """Calculate the reaction in place.
 
         Args:
             name: Name of the derived variable.
@@ -224,20 +210,6 @@ class Readout:
 
         """
         dependent[name] = cast(float, self.fn(*(dependent[arg] for arg in self.args)))
-
-    def calculate_inpl_time_course(self, name: str, dependent: pd.DataFrame) -> None:
-        """Calculate the derived value in place.
-
-        Args:
-            name: Name of the derived variable.
-            dependent: Dictionary of dependent variables.
-
-        """
-        try:
-            dependent[name] = self.fn(*dependent.loc[:, self.args].to_numpy().T)
-        except ValueError:  # e.g. numpy.where
-            sub = dependent.loc[:, self.args].to_numpy()
-            dependent[name] = [self.fn(*row) for row in sub]
 
 
 @dataclass(kw_only=True, slots=True)
@@ -255,7 +227,7 @@ class Reaction:
 
         return [k for k in self.args if k in include and k not in exclude]
 
-    def calculate(self, dependent: dict[str, float]) -> float:
+    def calculate(self, dependent: dict[str, Any]) -> float:
         """Calculate the derived value.
 
         Args:
@@ -267,7 +239,7 @@ class Reaction:
         """
         return cast(float, self.fn(*(dependent[arg] for arg in self.args)))
 
-    def calculate_inpl(self, name: str, dependent: dict[str, float]) -> None:
+    def calculate_inpl(self, name: str, dependent: dict[str, Any]) -> None:
         """Calculate the reaction in place.
 
         Args:
@@ -277,19 +249,45 @@ class Reaction:
         """
         dependent[name] = cast(float, self.fn(*(dependent[arg] for arg in self.args)))
 
-    def calculate_inpl_time_course(self, name: str, dependent: pd.DataFrame) -> None:
-        """Calculate the derived value in place.
 
-        Args:
-            name: Name of the derived variable.
-            dependent: Dictionary of dependent variables.
+@dataclass(kw_only=True)
+class AbstractSurrogate:
+    """Abstract base class for surrogate models.
 
-        """
-        try:
-            dependent[name] = self.fn(*dependent.loc[:, self.args].to_numpy().T)
-        except ValueError:  # e.g. numpy.where
-            sub = dependent.loc[:, self.args].to_numpy()
-            dependent[name] = [self.fn(*row) for row in sub]
+    Attributes:
+        inputs: List of input variable names.
+        stoichiometries: Dictionary mapping reaction names to stoichiometries.
+
+    Methods:
+        predict: Abstract method to predict outputs based on input data.
+
+    """
+
+    args: list[str]
+    outputs: list[str]
+    stoichiometries: dict[str, dict[str, float]] = field(default_factory=dict)
+
+    @abstractmethod
+    def predict_raw(self, y: np.ndarray) -> np.ndarray:
+        """Predict outputs based on input data."""
+
+    def predict(self, y: np.ndarray) -> dict[str, float]:
+        """Predict outputs based on input data."""
+        return dict(
+            zip(
+                self.outputs,
+                self.predict_raw(y),
+                strict=True,
+            )
+        )
+
+    def calculate_inpl(
+        self,
+        name: str,  # noqa: ARG002, for API compatibility
+        args: dict[str, Any],
+    ) -> None:
+        """Predict outputs based on input data."""
+        args |= self.predict(np.array([args[arg] for arg in self.args]))
 
 
 @dataclass(kw_only=True, slots=True)
@@ -427,58 +425,6 @@ class ProtocolByPars:
         """Get aggregated concentration or flux."""
         mean = cast(pd.DataFrame, self.results.unstack(level=0).agg(agg, axis=0))
         return cast(pd.DataFrame, mean.unstack().T)
-
-
-@dataclass(kw_only=True)
-class AbstractSurrogate:
-    """Abstract base class for surrogate models.
-
-    Attributes:
-        inputs: List of input variable names.
-        stoichiometries: Dictionary mapping reaction names to stoichiometries.
-
-    Methods:
-        predict: Abstract method to predict outputs based on input data.
-
-    """
-
-    args: list[str]
-    outputs: list[str]
-    stoichiometries: dict[str, dict[str, float]] = field(default_factory=dict)
-
-    @abstractmethod
-    def predict_raw(self, y: np.ndarray) -> np.ndarray:
-        """Predict outputs based on input data."""
-
-    def predict(self, y: np.ndarray) -> dict[str, float]:
-        """Predict outputs based on input data."""
-        return dict(
-            zip(
-                self.outputs,
-                self.predict_raw(y),
-                strict=True,
-            )
-        )
-
-    def calculate_inpl(
-        self,
-        name: str,  # noqa: ARG002, for API compatibility
-        args: dict[str, float],
-    ) -> None:
-        """Predict outputs based on input data."""
-        args |= self.predict(np.array([args[arg] for arg in self.args]))
-
-    def calculate_inpl_time_course(
-        self,
-        name: str,  # noqa: ARG002, for API compatibility
-        args: pd.DataFrame,
-    ) -> None:
-        """Predict outputs based on input data."""
-        args[self.outputs] = pd.DataFrame(
-            [self.predict(y) for y in args.loc[:, self.args].to_numpy()],
-            index=args.index,
-            dtype=float,
-        )
 
 
 @dataclass(kw_only=True)

@@ -1079,8 +1079,8 @@ def test_get_args_time_course_with_empty_concs() -> None:
     model.add_readout("readout1", one_argument, args=["var1"])
 
     concs = pd.DataFrame({}, index=[])
-    with pytest.raises(KeyError):
-        model.get_dependent_time_course(concs)
+    dependent = model.get_dependent_time_course(concs)
+    assert len(dependent) == 0
 
 
 def test_get_full_args() -> None:
