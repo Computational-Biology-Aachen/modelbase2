@@ -265,7 +265,7 @@ class AbstractSurrogate:
 
     args: list[str]
     outputs: list[str]
-    stoichiometries: dict[str, dict[str, float]] = field(default_factory=dict)
+    stoichiometries: dict[str, dict[str, float | Derived]] = field(default_factory=dict)
 
     @abstractmethod
     def predict_raw(self, y: np.ndarray) -> np.ndarray:
@@ -287,7 +287,7 @@ class AbstractSurrogate:
         args: dict[str, Any],
     ) -> None:
         """Predict outputs based on input data."""
-        args |= self.predict(np.array([args[arg] for arg in self.args]))
+        args |= self.predict(np.array([args[arg] for arg in self.args], dtype=float))
 
 
 @dataclass(kw_only=True, slots=True)

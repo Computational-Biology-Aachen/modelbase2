@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from numpy import polynomial
 
-from mxlpy.types import AbstractSurrogate, ArrayLike
+from mxlpy.types import AbstractSurrogate, ArrayLike, Derived
 
 __all__ = [
     "Polynomial",
@@ -42,7 +42,7 @@ def train_polynomial(
     degrees: Iterable[int] = (1, 2, 3, 4, 5, 6, 7),
     surrogate_args: list[str] | None = None,
     surrogate_outputs: list[str] | None = None,
-    surrogate_stoichiometries: dict[str, dict[str, float]] | None = None,
+    surrogate_stoichiometries: dict[str, dict[str, float | Derived]] | None = None,
 ) -> tuple[Polynomial, pd.DataFrame]:
     """Train a surrogate model based on function series expansion.
 

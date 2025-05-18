@@ -10,7 +10,7 @@ from torch.optim.adam import Adam
 from torch.optim.optimizer import ParamsT
 
 from mxlpy.nn._torch import MLP, DefaultDevice, train
-from mxlpy.types import AbstractSurrogate
+from mxlpy.types import AbstractSurrogate, Derived
 
 type LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
@@ -127,7 +127,7 @@ class TorchTrainer:
         self,
         surrogate_args: list[str] | None = None,
         surrogate_outputs: list[str] | None = None,
-        surrogate_stoichiometries: dict[str, dict[str, float]] | None = None,
+        surrogate_stoichiometries: dict[str, dict[str, float | Derived]] | None = None,
     ) -> Torch:
         return Torch(
             model=self.approximator,
@@ -145,7 +145,7 @@ def train_torch(
     epochs: int,
     surrogate_args: list[str] | None = None,
     surrogate_outputs: list[str] | None = None,
-    surrogate_stoichiometries: dict[str, dict[str, float]] | None = None,
+    surrogate_stoichiometries: dict[str, dict[str, float | Derived]] | None = None,
     batch_size: int | None = None,
     approximator: nn.Module | None = None,
     optimimzer_cls: Callable[[ParamsT], Adam] = Adam,

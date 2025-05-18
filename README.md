@@ -17,7 +17,9 @@
 
 ## Installation
 
-You can install mxlpy using pip: `pip install mxlpy`
+You can install mxlpy using pip: `pip install mxlpy`.
+
+Due to their sizes, the machine learning are optinoal dependencies. You cann install them using `pip install mxlpy[torch,tf]`.
 
 If you want access to the sundials solver suite via the [assimulo](https://jmodelica.org/assimulo/) package, we recommend setting up a virtual environment via [pixi](https://pixi.sh/) or [mamba / conda](https://mamba.readthedocs.io/en/latest/) using the [conda-forge](https://conda-forge.org/) channel.
 

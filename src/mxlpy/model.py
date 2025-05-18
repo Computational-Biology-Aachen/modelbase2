@@ -381,7 +381,17 @@ class Model:
         for surrogate in self._surrogates.values():
             for rxn_name, rxn in surrogate.stoichiometries.items():
                 for cpd_name, factor in rxn.items():
-                    stoich_by_compounds.setdefault(cpd_name, {})[rxn_name] = factor
+                    d_static = stoich_by_compounds.setdefault(cpd_name, {})
+
+                    if isinstance(factor, Derived):
+                        if all(i in all_parameter_names for i in factor.args):
+                            d_static[rxn_name] = factor.calculate(dependent)
+                        else:
+                            dyn_stoich_by_compounds.setdefault(cpd_name, {})[
+                                rxn_name
+                            ] = factor
+                    else:
+                        d_static[rxn_name] = factor
 
         var_names = self.get_variable_names()
         dxdt = pd.Series(np.zeros(len(var_names), dtype=float), index=var_names)
@@ -1279,7 +1289,7 @@ class Model:
         surrogate: AbstractSurrogate,
         args: list[str] | None = None,
         outputs: list[str] | None = None,
-        stoichiometries: dict[str, dict[str, float]] | None = None,
+        stoichiometries: dict[str, dict[str, float | Derived]] | None = None,
     ) -> Self:
         """Adds a surrogate model to the current instance.
 
@@ -1314,7 +1324,7 @@ class Model:
         name: str,
         surrogate: AbstractSurrogate | None = None,
         args: list[str] | None = None,
-        stoichiometries: dict[str, dict[str, float]] | None = None,
+        stoichiometries: dict[str, dict[str, float | Derived]] | None = None,
     ) -> Self:
         """Update a surrogate model in the model.
 
@@ -1608,28 +1618,6 @@ class Model:
     ##########################################################################
     # Get fluxes
     ##########################################################################
-
-    def _get_fluxes(self, args: dict[str, float]) -> dict[str, float]:
-        """Calculate the fluxes for the given arguments.
-
-        Examples:
-            >>> model._get_fluxes({"x1": 1.0, "x2": 2.0, "k1": 0.1, "time": 0.0})
-                {"r1": 0.1, "r2": 0.2}
-
-        Args:
-            args (dict[str, float]): A dictionary where the keys are argument names and the values are their corresponding float values.
-
-        Returns:
-            dict[str, float]: A dictionary where the keys are reaction names and the values are the calculated fluxes.
-
-        """
-        fluxes: dict[str, float] = {}
-        for name, rxn in self._reactions.items():
-            fluxes[name] = rxn.calculate(args)
-
-        for surrogate in self._surrogates.values():
-            fluxes |= surrogate.predict(np.array([args[arg] for arg in surrogate.args]))
-        return fluxes
 
     def get_fluxes(
         self,
