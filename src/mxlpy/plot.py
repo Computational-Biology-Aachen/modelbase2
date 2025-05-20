@@ -712,11 +712,11 @@ def _create_heatmap(
     if title is not None:
         ax.set_title(title)
     ax.set_xticks(
-        np.arange(0, len(df.columns), 1) + 0.5,
+        np.arange(0, len(df.columns), 1, dtype=float) + 0.5,
         labels=xticklabels,
     )
     ax.set_yticks(
-        np.arange(0, len(df.index), 1) + 0.5,
+        np.arange(0, len(df.index), 1, dtype=float) + 0.5,
         labels=yticklabels,
     )
 

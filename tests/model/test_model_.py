@@ -5,7 +5,6 @@ import pandas as pd
 import pytest
 
 from mxlpy.model import Model
-from mxlpy.types import MockSurrogate
 
 
 def no_arguments() -> float:
@@ -892,59 +891,6 @@ def test_remove_readout_nonexistent() -> None:
         model.remove_readout("readout1")
 
 
-def test_add_surrogate(mock_surrogate: MockSurrogate) -> None:
-    model = Model()
-    model.add_surrogate("surrogate1", mock_surrogate)
-    assert "surrogate1" in model._surrogates
-    assert model._surrogates["surrogate1"] == mock_surrogate
-    assert model._ids["surrogate1"] == "surrogate"
-
-
-def test_add_surrogate_existing_name(mock_surrogate: MockSurrogate) -> None:
-    model = Model()
-    model.add_surrogate("surrogate1", mock_surrogate)
-    with pytest.raises(NameError):
-        model.add_surrogate("surrogate1", mock_surrogate)
-
-
-def test_add_surrogate_protected_name(mock_surrogate: MockSurrogate) -> None:
-    model = Model()
-    with pytest.raises(KeyError):
-        model.add_surrogate("time", mock_surrogate)
-
-
-def test_update_surrogate(mock_surrogate: MockSurrogate) -> None:
-    model = Model()
-    model.add_surrogate("surrogate1", mock_surrogate)
-    new_surrogate = MockSurrogate(
-        args=["x"],
-        outputs=["v1"],
-        stoichiometries={"v1": {"x": 1.0}},
-    )
-    model.update_surrogate("surrogate1", new_surrogate)
-    assert model._surrogates["surrogate1"] == new_surrogate
-
-
-def test_update_surrogate_nonexistent(mock_surrogate: MockSurrogate) -> None:
-    model = Model()
-    with pytest.raises(KeyError):
-        model.update_surrogate("surrogate1", mock_surrogate)
-
-
-def test_remove_surrogate(mock_surrogate: MockSurrogate) -> None:
-    model = Model()
-    model.add_surrogate("surrogate1", mock_surrogate)
-    model.remove_surrogate("surrogate1")
-    assert "surrogate1" not in model._surrogates
-    assert "surrogate1" not in model._ids
-
-
-def test_remove_surrogate_nonexistent() -> None:
-    model = Model()
-    with pytest.raises(KeyError):
-        model.remove_surrogate("surrogate1")
-
-
 def test_get_args() -> None:
     model = Model()
     model.add_parameter("param1", 1.0)
@@ -1143,33 +1089,6 @@ def test_get_fluxes() -> None:
     assert fluxes["reaction1"] == 3.0
 
 
-def test_get_fluxes_with_surrogate() -> None:
-    model = Model()
-    model.add_variables({"A": 1.0, "B": 2.0})
-    reaction_fn = two_arguments
-    stoichiometry = {"A": -1.0, "B": 1.0}
-    model.add_reaction(
-        "reaction1",
-        fn=reaction_fn,
-        stoichiometry=stoichiometry,
-        args=["A", "B"],
-    )
-    model.add_surrogate(
-        "surrogate1",
-        MockSurrogate(
-            args=["A"],
-            outputs=["flux1"],
-            stoichiometries={"flux1": {"A": 1.0, "B": 1.0}},
-        ),
-    )
-    concs = {"A": 1.0, "B": 2.0}
-    fluxes = model.get_fluxes(concs)
-    assert "reaction1" in fluxes
-    assert fluxes["reaction1"] == 3.0
-    assert "flux1" in fluxes
-    assert fluxes["flux1"] == 1.0
-
-
 def test_get_fluxes_empty_reactions() -> None:
     model = Model()
     concs = {"A": 1.0, "B": 2.0}
@@ -1209,35 +1128,6 @@ def test_get_fluxes_time_course() -> None:
 
     assert fluxes_time_course["reaction1"].iloc[0] == 3.0
     assert fluxes_time_course["reaction1"].iloc[1] == 5.0
-
-
-def test_get_fluxes_time_course_with_surrogate() -> None:
-    model = Model()
-    model.add_variables({"A": 1.0, "B": 2.0})
-    reaction_fn = two_arguments
-    stoichiometry = {"A": -1.0, "B": 1.0}
-    model.add_reaction(
-        "reaction1",
-        fn=reaction_fn,
-        stoichiometry=stoichiometry,
-        args=["A", "B"],
-    )
-    model.add_surrogate(
-        "surrogate1",
-        MockSurrogate(
-            args=["A"],
-            outputs=["flux1"],
-            stoichiometries={"flux1": {"A": 1.0, "B": 1.0}},
-        ),
-    )
-    concs = pd.DataFrame({"A": [1.0, 2.0], "B": [2.0, 3.0]}, index=[0.0, 1.0])
-    args_time_course = model.get_dependent_time_course(concs)
-    fluxes_time_course = model.get_fluxes_time_course(args_time_course)
-
-    assert fluxes_time_course["reaction1"].iloc[0] == 3.0
-    assert fluxes_time_course["reaction1"].iloc[1] == 5.0
-    assert fluxes_time_course["flux1"].iloc[0] == 1.0
-    assert fluxes_time_course["flux1"].iloc[1] == 2.0
 
 
 def test_get_fluxes_time_course_empty_reactions() -> None:
@@ -1283,32 +1173,6 @@ def test_call() -> None:
     assert result[1] == 3.0
 
 
-def test_call_with_surrogate() -> None:
-    model = Model()
-    model.add_variables({"A": 1.0, "B": 2.0})
-    reaction_fn = two_arguments
-    stoichiometry = {"A": -1.0, "B": 1.0}
-    model.add_reaction(
-        "reaction1",
-        fn=reaction_fn,
-        stoichiometry=stoichiometry,
-        args=["A", "B"],
-    )
-    model.add_surrogate(
-        "surrogate1",
-        MockSurrogate(
-            args=["A"],
-            outputs=["flux1"],
-            stoichiometries={"flux1": {"A": 1.0, "B": 1.0}},
-        ),
-    )
-    time = 0.0
-    concs = np.array([1.0, 2.0])
-    result = model(time, concs)
-    assert result[0] == -2.0
-    assert result[1] == 4.0
-
-
 def test_call_empty_reactions() -> None:
     model = Model()
     time = 0.0
@@ -1348,31 +1212,6 @@ def test_get_right_hand_side() -> None:
     rhs = model.get_right_hand_side(concs)
     assert rhs["A"] == -3.0
     assert rhs["B"] == 3.0
-
-
-def test_get_right_hand_side_with_surrogate() -> None:
-    model = Model()
-    model.add_variables({"A": 1.0, "B": 2.0})
-    reaction_fn = two_arguments
-    stoichiometry = {"A": -1.0, "B": 1.0}
-    model.add_reaction(
-        "reaction1",
-        fn=reaction_fn,
-        stoichiometry=stoichiometry,
-        args=["A", "B"],
-    )
-    model.add_surrogate(
-        "surrogate1",
-        MockSurrogate(
-            args=["A"],
-            outputs=["flux1"],
-            stoichiometries={"flux1": {"A": 1.0, "B": 1.0}},
-        ),
-    )
-    concs = {"A": 1.0, "B": 2.0}
-    rhs = model.get_right_hand_side(concs)
-    assert rhs["A"] == -2.0
-    assert rhs["B"] == 4.0
 
 
 def test_get_right_hand_side_empty_concs() -> None:

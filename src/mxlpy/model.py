@@ -255,10 +255,8 @@ class ModelCache:
     """
 
     var_names: list[str]
-    order: list[str]
+    dyn_order: list[str]
     all_parameter_values: dict[str, float]
-    derived_parameter_names: list[str]
-    derived_variable_names: list[str]
     stoich_by_cpds: dict[str, dict[str, float]]
     dyn_stoich_by_cpds: dict[str, dict[str, Derived]]
     dxdt: pd.Series
@@ -310,7 +308,6 @@ class Model:
         """
         all_parameter_values: dict[str, float] = self._parameters.copy()
         all_parameter_names: set[str] = set(all_parameter_values)
-        dependent = all_parameter_values | self._data
 
         # Sanity checks
         for name, el in it.chain(
@@ -341,33 +338,39 @@ class Model:
             ],
         )
 
-        # Split derived into parameters and variables
-        # for user convenience
-        derived_initial_conditions: list[str] = []
-        derived_variable_names: list[str] = []
-        derived_parameter_names: list[str] = []
+        # Calculate all values once, including dynamic ones
+        # That way, we can make initial conditions dependent on e.g. rates
+        dependent = (
+            all_parameter_values
+            | self._data
+            | {k: v for k, v in self._variables.items() if not isinstance(v, Derived)}
+            | {"time": 0.0}
+        )
+        for name in order:
+            to_sort[name].calculate_inpl(name, dependent)
+
+        # Split derived into static and dynamic variables
+        static_order = []
+        dyn_order = []
         for name in order:
             if name in self._reactions or name in self._surrogates:
-                continue
-            if name in self._variables:
-                derived_initial_conditions.append(name)
-            derived = self._derived[name]
-            if all(i in all_parameter_names for i in derived.args):
-                all_parameter_names.add(name)
-                derived_parameter_names.append(name)
-                value = derived.calculate(dependent)
-                all_parameter_values[name] = value
-                dependent[name] = value
+                dyn_order.append(name)
+            elif name in self._variables:
+                static_order.append(name)
             else:
-                derived_variable_names.append(name)
+                derived = self._derived[name]
+                if all(i in all_parameter_names for i in derived.args):
+                    static_order.append(name)
+                    all_parameter_names.add(name)
+                else:
+                    dyn_order.append(name)
 
+        # Calculate dynamic and static stochiometries
         stoich_by_compounds: dict[str, dict[str, float]] = {}
         dyn_stoich_by_compounds: dict[str, dict[str, Derived]] = {}
-
         for rxn_name, rxn in self._reactions.items():
             for cpd_name, factor in rxn.stoichiometry.items():
                 d_static = stoich_by_compounds.setdefault(cpd_name, {})
-
                 if isinstance(factor, Derived):
                     if all(i in all_parameter_names for i in factor.args):
                         d_static[rxn_name] = factor.calculate(dependent)
@@ -382,7 +385,6 @@ class Model:
             for rxn_name, rxn in surrogate.stoichiometries.items():
                 for cpd_name, factor in rxn.items():
                     d_static = stoich_by_compounds.setdefault(cpd_name, {})
-
                     if isinstance(factor, Derived):
                         if all(i in all_parameter_names for i in factor.args):
                             d_static[rxn_name] = factor.calculate(dependent)
@@ -399,20 +401,21 @@ class Model:
         initial_conditions: dict[str, float] = {
             k: v for k, v in self._variables.items() if not isinstance(v, Derived)
         }
-        for name in derived_initial_conditions:
-            der = cast(Derived, self._variables[name])
-            initial_conditions[name] = der.calculate(
-                initial_conditions | all_parameter_values
-            )
+        for name in static_order:
+            if name in self._variables:
+                initial_conditions[name] = cast(float, dependent[name])
+            elif name in self._derived:
+                all_parameter_values[name] = cast(float, dependent[name])
+            else:
+                msg = "Unknown target for static derived variable."
+                raise KeyError(msg)
 
         self._cache = ModelCache(
             var_names=var_names,
-            order=order,
+            dyn_order=dyn_order,
             all_parameter_values=all_parameter_values,
             stoich_by_cpds=stoich_by_compounds,
             dyn_stoich_by_cpds=dyn_stoich_by_compounds,
-            derived_variable_names=derived_variable_names,
-            derived_parameter_names=derived_parameter_names,
             dxdt=dxdt,
             initial_conditions=initial_conditions,
         )
@@ -925,7 +928,8 @@ class Model:
         if (cache := self._cache) is None:
             cache = self._create_cache()
         derived = self._derived
-        return {k: derived[k] for k in cache.derived_variable_names}
+
+        return {k: v for k, v in derived.items() if k not in cache.all_parameter_values}
 
     @property
     def derived_parameters(self) -> dict[str, Derived]:
@@ -944,7 +948,7 @@ class Model:
         if (cache := self._cache) is None:
             cache = self._create_cache()
         derived = self._derived
-        return {k: derived[k] for k in cache.derived_parameter_names}
+        return {k: v for k, v in derived.items() if k in cache.all_parameter_values}
 
     @_invalidate_cache
     def add_derived(
@@ -1435,7 +1439,7 @@ class Model:
         args["time"] = time
 
         containers = self._derived | self._reactions | self._surrogates
-        for name in cache.order:
+        for name in cache.dyn_order:
             containers[name].calculate_inpl(name, args)
 
         for k in self._data:

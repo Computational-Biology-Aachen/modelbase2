@@ -46,7 +46,7 @@ __all__ = [
     "unwrap2",
 ]
 
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar, cast
 
 import numpy as np
@@ -286,12 +286,20 @@ class AbstractSurrogate:
 class MockSurrogate(AbstractSurrogate):
     """Mock surrogate model for testing purposes."""
 
+    fn: Callable[..., Iterable[float]]
+
     def predict(
         self,
         args: dict[str, float | pd.Series | pd.DataFrame],
     ) -> dict[str, float]:
         """Predict outputs based on input data."""
-        return dict(zip(self.outputs, args.values(), strict=True))  # type: ignore
+        return dict(
+            zip(
+                self.outputs,
+                self.fn(*(args[i] for i in self.args)),
+                strict=True,
+            )
+        )  # type: ignore
 
 
 @dataclass(kw_only=True, slots=True)
