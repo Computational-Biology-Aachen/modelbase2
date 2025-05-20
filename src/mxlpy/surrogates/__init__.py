@@ -22,9 +22,11 @@ with contextlib.suppress(ImportError):
     from ._torch import Torch, TorchTrainer, train_torch
 
 from ._poly import Polynomial, train_polynomial
+from ._qss import QSS
 
 __all__ = [
     "Polynomial",
+    "QSS",
     "Torch",
     "TorchTrainer",
     "train_polynomial",

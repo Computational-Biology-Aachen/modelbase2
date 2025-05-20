@@ -32,6 +32,17 @@ class Polynomial(AbstractSurrogate):
     def predict_raw(self, y: np.ndarray) -> np.ndarray:
         return self.model(y)
 
+    def predict(
+        self, args: dict[str, float | pd.Series | pd.DataFrame]
+    ) -> dict[str, float]:
+        return dict(
+            zip(
+                self.outputs,
+                self.model(np.array([args[arg] for arg in self.args])),
+                strict=True,
+            )
+        )
+
 
 def train_polynomial(
     feature: ArrayLike | pd.Series,

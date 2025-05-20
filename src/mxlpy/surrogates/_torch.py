@@ -65,6 +65,19 @@ class Torch(AbstractSurrogate):
                 torch.tensor(y, dtype=torch.float32),
             ).numpy()
 
+    def predict(
+        self,
+        args: dict[str, float | pd.Series | pd.DataFrame],
+    ) -> dict[str, float]:
+        """Predict outputs based on input data."""
+        return dict(
+            zip(
+                self.outputs,
+                self.predict_raw(np.array([args[arg] for arg in self.args])),
+                strict=True,
+            )
+        )
+
 
 @dataclass(init=False)
 class TorchTrainer:

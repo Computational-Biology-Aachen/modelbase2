@@ -268,26 +268,30 @@ class AbstractSurrogate:
     stoichiometries: dict[str, dict[str, float | Derived]] = field(default_factory=dict)
 
     @abstractmethod
-    def predict_raw(self, y: np.ndarray) -> np.ndarray:
+    def predict(
+        self, args: dict[str, float | pd.Series | pd.DataFrame]
+    ) -> dict[str, float]:
         """Predict outputs based on input data."""
-
-    def predict(self, y: np.ndarray) -> dict[str, float]:
-        """Predict outputs based on input data."""
-        return dict(
-            zip(
-                self.outputs,
-                self.predict_raw(y),
-                strict=True,
-            )
-        )
 
     def calculate_inpl(
         self,
         name: str,  # noqa: ARG002, for API compatibility
-        args: dict[str, Any],
+        args: dict[str, float | pd.Series | pd.DataFrame],
     ) -> None:
         """Predict outputs based on input data."""
-        args |= self.predict(np.array([args[arg] for arg in self.args], dtype=float))
+        args |= self.predict(args=args)
+
+
+@dataclass(kw_only=True)
+class MockSurrogate(AbstractSurrogate):
+    """Mock surrogate model for testing purposes."""
+
+    def predict(
+        self,
+        args: dict[str, float | pd.Series | pd.DataFrame],
+    ) -> dict[str, float]:
+        """Predict outputs based on input data."""
+        return dict(zip(self.outputs, args.values(), strict=True))  # type: ignore
 
 
 @dataclass(kw_only=True, slots=True)
@@ -425,18 +429,6 @@ class ProtocolByPars:
         """Get aggregated concentration or flux."""
         mean = cast(pd.DataFrame, self.results.unstack(level=0).agg(agg, axis=0))
         return cast(pd.DataFrame, mean.unstack().T)
-
-
-@dataclass(kw_only=True)
-class MockSurrogate(AbstractSurrogate):
-    """Mock surrogate model for testing purposes."""
-
-    def predict(
-        self,
-        y: np.ndarray,
-    ) -> dict[str, float]:
-        """Predict outputs based on input data."""
-        return dict(zip(self.outputs, y, strict=True))
 
 
 @dataclass(kw_only=True)
