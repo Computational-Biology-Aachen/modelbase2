@@ -1092,6 +1092,33 @@ class Model:
                 )
         return pd.DataFrame(stoich_by_cpds).T.fillna(0)
 
+    def get_stoichiometries_of_variable(
+        self,
+        variable: str,
+        variables: dict[str, float] | None = None,
+        time: float = 0.0,
+    ) -> dict[str, float]:
+        """Retrieve the stoichiometry of a specific variable.
+
+        Examples:
+            >>> model.get_stoichiometries_of_variable("x1")
+                {"v1": -1, "v2": 1}
+
+        Args:
+            variable: The name of the variable for which to retrieve the stoichiometry.
+            variables: A dictionary of variable names and their values.
+            time: The time point at which to evaluate the stoichiometry.
+
+        """
+        if (cache := self._cache) is None:
+            cache = self._create_cache()
+        args = self.get_dependent(variables=variables, time=time)
+
+        stoich = copy.deepcopy(cache.stoich_by_cpds[variable])
+        for rxn, derived in cache.dyn_stoich_by_cpds[variable].items():
+            stoich[rxn] = float(derived.fn(*(args[i] for i in derived.args)))
+        return stoich
+
     @_invalidate_cache
     def add_reaction(
         self,
