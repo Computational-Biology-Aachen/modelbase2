@@ -59,7 +59,6 @@ from .label_map import LabelMapper
 from .linear_label_map import LinearLabelMapper
 from .mc import Cache
 from .model import Model
-from .nn import _torch
 from .scan import (
     steady_state,
     time_course,
@@ -87,7 +86,6 @@ __all__ = [
     "Scipy",
     "Simulator",
     "SymbolicModel",
-    "_torch",
     "cartesian_product",
     "distributions",
     "experimental",
