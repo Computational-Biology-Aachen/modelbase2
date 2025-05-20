@@ -122,7 +122,7 @@ def test_train_torch_surrogate_with_args_and_stoichiometries(
         targets=targets,
         epochs=3,
         surrogate_args=surrogate_args,
-        surrogate_stoichiometries=surrogate_stoichiometries,
+        surrogate_stoichiometries=surrogate_stoichiometries,  # type: ignore
     )
 
     assert isinstance(surrogate, Torch)

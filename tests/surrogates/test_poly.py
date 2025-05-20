@@ -200,7 +200,7 @@ def test_train_polynomial_surrogate_with_args_and_stoichiometries(
         series="Power",
         degrees=[1, 2],
         surrogate_args=surrogate_args,
-        surrogate_stoichiometries=surrogate_stoichiometries,
+        surrogate_stoichiometries=surrogate_stoichiometries,  # type: ignore
     )
 
     assert surrogate.args == surrogate_args
