@@ -30,7 +30,7 @@ DefaultDevice = torch.device("cpu")
 
 
 def train(
-    aprox: nn.Module,
+    model: nn.Module,
     features: Array,
     targets: Array,
     epochs: int,
@@ -42,7 +42,7 @@ def train(
     """Train the neural network using mini-batch gradient descent.
 
     Args:
-        aprox: Neural network model to train.
+        model: Neural network model to train.
         features: Input features as a tensor.
         targets: Target values as a tensor.
         epochs: Number of training epochs.
@@ -71,7 +71,7 @@ def train(
         epoch_loss = 0
         for xb, yb in data_loader:
             optimizer.zero_grad()
-            loss = loss_fn(aprox(xb), yb)
+            loss = loss_fn(model(xb), yb)
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item() * xb.size(0)
@@ -125,20 +125,16 @@ class MLP(nn.Module):
         levels = []
         previous_neurons = n_inputs
 
-        for idx, neurons in enumerate(self.layers):
-            if idx == (len(self.layers) - 1):
-                levels.append(nn.Linear(previous_neurons, neurons))
-
-                if self.output_activation:
-                    levels.append(self.output_activation)
-
-            else:
-                levels.append(nn.Linear(previous_neurons, neurons))
-
-                if self.activation:
-                    levels.append(self.activation)
-
+        for neurons in self.layers[:-1]:
+            levels.append(nn.Linear(previous_neurons, neurons))
+            if self.activation:
+                levels.append(self.activation)
             previous_neurons = neurons
+
+        # Output layer
+        levels.append(nn.Linear(previous_neurons, self.layers[-1]))
+        if self.output_activation:
+            levels.append(self.output_activation)
 
         self.net = nn.Sequential(*levels)
 
@@ -163,7 +159,12 @@ class MLP(nn.Module):
 class LSTM(nn.Module):
     """Default LSTM neural network model for time-series approximation."""
 
-    def __init__(self, n_inputs: int, n_outputs: int, n_hidden: int) -> None:
+    def __init__(
+        self,
+        n_inputs: int,
+        n_outputs: int,
+        n_hidden: int,
+    ) -> None:
         """Initializes the neural network model.
 
         Args:

@@ -9,13 +9,13 @@ from mxlpy.types import AbstractSurrogate, Array
 if TYPE_CHECKING:
     import pandas as pd
 
-__all__ = ["QSS", "QSSFn"]
+__all__ = ["QSSFn", "Surrogate"]
 
 type QSSFn = Callable[..., Array]
 
 
 @dataclass(kw_only=True)
-class QSS(AbstractSurrogate):
+class Surrogate(AbstractSurrogate):
     model: QSSFn
 
     def predict(

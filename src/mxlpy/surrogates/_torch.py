@@ -9,16 +9,17 @@ from torch import nn
 from torch.optim.adam import Adam
 from torch.optim.optimizer import ParamsT
 
-from mxlpy.nn._torch import MLP, DefaultDevice, train
+from mxlpy.nn._torch import MLP, DefaultDevice
+from mxlpy.nn._torch import train as _train
 from mxlpy.types import AbstractSurrogate, Derived
 
 type LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
 __all__ = [
     "LossFn",
-    "Torch",
-    "TorchTrainer",
-    "train_torch",
+    "Surrogate",
+    "Trainer",
+    "train",
 ]
 
 
@@ -37,7 +38,7 @@ def _mean_abs(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 
 @dataclass(kw_only=True)
-class Torch(AbstractSurrogate):
+class Surrogate(AbstractSurrogate):
     """Surrogate model using PyTorch.
 
     Attributes:
@@ -80,10 +81,10 @@ class Torch(AbstractSurrogate):
 
 
 @dataclass(init=False)
-class TorchTrainer:
+class Trainer:
     features: pd.DataFrame
     targets: pd.DataFrame
-    approximator: nn.Module
+    model: nn.Module
     optimizer: Adam
     device: torch.device
     losses: list[pd.Series]
@@ -93,22 +94,22 @@ class TorchTrainer:
         self,
         features: pd.DataFrame,
         targets: pd.DataFrame,
-        approximator: nn.Module | None = None,
-        optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
+        model: nn.Module | None = None,
+        optimizer_cls: Callable[[ParamsT], Adam] = Adam,
         device: torch.device = DefaultDevice,
         loss_fn: LossFn = _mean_abs,
     ) -> None:
         self.features = features
         self.targets = targets
 
-        if approximator is None:
-            approximator = MLP(
+        if model is None:
+            model = MLP(
                 n_inputs=len(features.columns),
                 neurons_per_layer=[50, 50, len(targets.columns)],
             )
-        self.approximator = approximator.to(device)
+        self.model = model.to(device)
 
-        self.optimizer = optimimzer_cls(approximator.parameters())
+        self.optimizer = optimizer_cls(model.parameters())
         self.device = device
         self.loss_fn = loss_fn
         self.losses = []
@@ -118,8 +119,8 @@ class TorchTrainer:
         epochs: int,
         batch_size: int | None = None,
     ) -> Self:
-        losses = train(
-            aprox=self.approximator,
+        losses = _train(
+            model=self.model,
             features=self.features.to_numpy(),
             targets=self.targets.to_numpy(),
             epochs=epochs,
@@ -141,9 +142,9 @@ class TorchTrainer:
         surrogate_args: list[str] | None = None,
         surrogate_outputs: list[str] | None = None,
         surrogate_stoichiometries: dict[str, dict[str, float | Derived]] | None = None,
-    ) -> Torch:
-        return Torch(
-            model=self.approximator,
+    ) -> Surrogate:
+        return Surrogate(
+            model=self.model,
             args=surrogate_args if surrogate_args is not None else [],
             outputs=surrogate_outputs if surrogate_outputs is not None else [],
             stoichiometries=surrogate_stoichiometries
@@ -152,7 +153,7 @@ class TorchTrainer:
         )
 
 
-def train_torch(
+def train(
     features: pd.DataFrame,
     targets: pd.DataFrame,
     epochs: int,
@@ -160,11 +161,11 @@ def train_torch(
     surrogate_outputs: list[str] | None = None,
     surrogate_stoichiometries: dict[str, dict[str, float | Derived]] | None = None,
     batch_size: int | None = None,
-    approximator: nn.Module | None = None,
-    optimimzer_cls: Callable[[ParamsT], Adam] = Adam,
+    model: nn.Module | None = None,
+    optimizer_cls: Callable[[ParamsT], Adam] = Adam,
     device: torch.device = DefaultDevice,
     loss_fn: LossFn = _mean_abs,
-) -> tuple[Torch, pd.Series]:
+) -> tuple[Surrogate, pd.Series]:
     """Train a PyTorch surrogate model.
 
     Examples:
@@ -186,8 +187,8 @@ def train_torch(
         surrogate_outputs: Names of output arguments from the surrogate.
         surrogate_stoichiometries: Mapping of variables to their stoichiometries
         batch_size: Size of mini-batches for training (None for full-batch).
-        approximator: Predefined neural network model (None to use default MLP features-50-50-output).
-        optimimzer_cls: Optimizer class to use for training (default: Adam).
+        model: Predefined neural network model (None to use default MLP features-50-50-output).
+        optimizer_cls: Optimizer class to use for training (default: Adam).
         device: Device to run the training on (default: DefaultDevice).
         loss_fn: Custom loss function or instance of torch loss object
 
@@ -195,11 +196,11 @@ def train_torch(
         tuple[TorchSurrogate, pd.Series]: Trained surrogate model and loss history.
 
     """
-    trainer = TorchTrainer(
+    trainer = Trainer(
         features=features,
         targets=targets,
-        approximator=approximator,
-        optimimzer_cls=optimimzer_cls,
+        model=model,
+        optimizer_cls=optimizer_cls,
         device=device,
         loss_fn=loss_fn,
     ).train(

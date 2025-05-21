@@ -6,8 +6,8 @@ import pytest
 from numpy import polynomial
 
 from mxlpy.surrogates._poly import (
-    Polynomial,
-    train_polynomial,
+    Surrogate,
+    train,
 )
 
 
@@ -28,7 +28,7 @@ def quadratic_data() -> tuple[np.ndarray, np.ndarray]:
 def test_poly_surrogate_predict_raw() -> None:
     # Create a simple polynomial: y = 2x + 3
     poly = polynomial.polynomial.Polynomial([3, 2])
-    surrogate = Polynomial(
+    surrogate = Surrogate(
         model=poly,
         args=["x"],
         outputs=["y"],
@@ -51,14 +51,14 @@ def test_train_polynomial_surrogate_power_series(
 ) -> None:
     x, y = linear_data
 
-    surrogate, stats = train_polynomial(
+    surrogate, stats = train(
         feature=x,
         target=y,
         series="Power",
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, Polynomial)
+    assert isinstance(surrogate, Surrogate)
     assert isinstance(surrogate.model, polynomial.polynomial.Polynomial)
 
     # Check stats dataframe
@@ -79,14 +79,14 @@ def test_train_polynomial_surrogate_chebyshev_series(
 ) -> None:
     x, y = quadratic_data
 
-    surrogate, stats = train_polynomial(
+    surrogate, stats = train(
         feature=x,
         target=y,
         series="Chebyshev",
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, Polynomial)
+    assert isinstance(surrogate, Surrogate)
     assert isinstance(surrogate.model, polynomial.chebyshev.Chebyshev)
 
     # Check stats dataframe
@@ -107,14 +107,14 @@ def test_train_polynomial_surrogate_legendre_series(
 ) -> None:
     x, y = quadratic_data
 
-    surrogate, stats = train_polynomial(
+    surrogate, stats = train(
         feature=x,
         target=y,
         series="Legendre",
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, Polynomial)
+    assert isinstance(surrogate, Surrogate)
     assert isinstance(surrogate.model, polynomial.legendre.Legendre)
 
     # Check stats dataframe
@@ -132,14 +132,14 @@ def test_train_polynomial_surrogate_laguerre_series(
     x, y = quadratic_data
     x = np.abs(x)  # Laguerre polynomials best for x >= 0
 
-    surrogate, stats = train_polynomial(
+    surrogate, stats = train(
         feature=x,
         target=y,
         series="Laguerre",
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, Polynomial)
+    assert isinstance(surrogate, Surrogate)
     assert isinstance(surrogate.model, polynomial.laguerre.Laguerre)
 
     # Test predictions with the best model
@@ -152,14 +152,14 @@ def test_train_polynomial_surrogate_hermite_series(
 ) -> None:
     x, y = quadratic_data
 
-    surrogate, stats = train_polynomial(
+    surrogate, stats = train(
         feature=x,
         target=y,
         series="Hermite",
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, Polynomial)
+    assert isinstance(surrogate, Surrogate)
     assert isinstance(surrogate.model, polynomial.hermite.Hermite)
 
     # Test predictions with the best model
@@ -172,14 +172,14 @@ def test_train_polynomial_surrogate_hermitee_series(
 ) -> None:
     x, y = quadratic_data
 
-    surrogate, stats = train_polynomial(
+    surrogate, stats = train(
         feature=x,
         target=y,
         series="HermiteE",
         degrees=[1, 2, 3],
     )
 
-    assert isinstance(surrogate, Polynomial)
+    assert isinstance(surrogate, Surrogate)
     assert isinstance(surrogate.model, polynomial.hermite_e.HermiteE)
 
     # Test predictions with the best model
@@ -194,7 +194,7 @@ def test_train_polynomial_surrogate_with_args_and_stoichiometries(
     surrogate_args = ["x"]
     surrogate_stoichiometries = {"r1": {"x": -1.0, "y": 1.0}}
 
-    surrogate, stats = train_polynomial(
+    surrogate, stats = train(
         feature=x,
         target=y,
         series="Power",

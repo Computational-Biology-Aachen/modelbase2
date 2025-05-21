@@ -41,7 +41,7 @@ def test_train_full(features_targets: tuple[pd.DataFrame, pd.DataFrame]) -> None
     loss = torch.nn.MSELoss()
 
     losses = train(
-        aprox=model,
+        model=model,
         features=features.to_numpy(),
         targets=targets.to_numpy(),
         epochs=3,

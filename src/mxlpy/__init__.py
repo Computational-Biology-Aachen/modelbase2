@@ -48,11 +48,9 @@ from . import (
     fns,
     mc,
     mca,
-    npe,
     plot,
     report,
     sbml,
-    surrogates,
 )
 from .integrators import DefaultIntegrator, Scipy
 from .label_map import LabelMapper
@@ -74,6 +72,19 @@ with contextlib.suppress(ImportError):
 if TYPE_CHECKING:
     from mxlpy.types import ArrayLike
 
+    from . import (
+        nn,
+        npe,
+        surrogates,
+    )
+else:
+    from lazy_import import lazy_module
+
+    nn = lazy_module("mxlpy.nn")
+    npe = lazy_module("mxlpy.npe")
+    surrogates = lazy_module("mxlpy.surrogates")
+
+
 __all__ = [
     "Assimulo",
     "Cache",
@@ -94,6 +105,7 @@ __all__ = [
     "make_protocol",
     "mc",
     "mca",
+    "nn",
     "npe",
     "plot",
     "report",

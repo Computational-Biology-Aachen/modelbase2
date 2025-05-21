@@ -1,10 +1,20 @@
 """Collection of neural network architectures."""
 
 import contextlib
-
-__all__ = ["tensorflow", "torch"]
+from typing import TYPE_CHECKING
 
 with contextlib.suppress(ImportError):
-    from . import _torch as torch
+    if TYPE_CHECKING:
+        from . import _keras as keras
+        from . import _torch as torch
+    else:
+        from lazy_import import lazy_module
 
-from . import _tensorflow as tensorflow
+        keras = lazy_module("mxlpy.nn._keras")
+        torch = lazy_module("mxlpy.nn._torch")
+
+
+__all__ = [
+    "keras",
+    "torch",
+]

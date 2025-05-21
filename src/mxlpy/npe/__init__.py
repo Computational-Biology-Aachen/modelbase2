@@ -17,22 +17,20 @@ Functions:
 from __future__ import annotations
 
 import contextlib
+from typing import TYPE_CHECKING
 
 with contextlib.suppress(ImportError):
-    from ._torch import (
-        TorchSteadyState,
-        TorchSteadyStateTrainer,
-        TorchTimeCourse,
-        TorchTimeCourseTrainer,
-        train_torch_steady_state,
-        train_torch_time_course,
-    )
+    if TYPE_CHECKING:
+        from . import _keras as keras
+        from . import _torch as torch
+    else:
+        from lazy_import import lazy_module
+
+        keras = lazy_module("mxlpy.npe._keras")
+        torch = lazy_module("mxlpy.npe._torch")
+
 
 __all__ = [
-    "TorchSteadyState",
-    "TorchSteadyStateTrainer",
-    "TorchTimeCourse",
-    "TorchTimeCourseTrainer",
-    "train_torch_steady_state",
-    "train_torch_time_course",
+    "keras",
+    "torch",
 ]

@@ -6,9 +6,9 @@ import torch
 from torch import nn
 
 from mxlpy.npe._torch import (
-    TorchSteadyState,
-    TorchTimeCourse,
-    train_torch_steady_state,
+    SteadyState,
+    TimeCourse,
+    train_steady_state,
 )
 
 
@@ -92,7 +92,7 @@ def test_torch_ss_estimator(ss_data: tuple[pd.DataFrame, pd.DataFrame]) -> None:
     features, targets = ss_data
     model = SimpleModel(n_inputs=2, n_outputs=2)
 
-    estimator = TorchSteadyState(model=model, parameter_names=["p1", "p2"])
+    estimator = SteadyState(model=model, parameter_names=["p1", "p2"])
 
     predictions = estimator.predict(features)
     assert predictions.shape == (5, 2)
@@ -105,7 +105,7 @@ def test_torch_time_course_estimator(
     features, targets = time_course_data
     model = SimpleTimeModel(n_inputs=2, n_outputs=2)
 
-    estimator = TorchTimeCourse(model=model, parameter_names=["p1", "p2"])
+    estimator = TimeCourse(model=model, parameter_names=["p1", "p2"])
 
     predictions = estimator.predict(features)
     assert predictions.shape == (3, 2)  # 3 experiments, 2 parameters
@@ -115,11 +115,11 @@ def test_torch_time_course_estimator(
 def test_train_torch_ss_estimator(ss_data: tuple[pd.DataFrame, pd.DataFrame]) -> None:
     features, targets = ss_data
 
-    estimator, losses = train_torch_steady_state(
+    estimator, losses = train_steady_state(
         features=features, targets=targets, epochs=5, batch_size=2
     )
 
-    assert isinstance(estimator, TorchSteadyState)
+    assert isinstance(estimator, SteadyState)
     assert estimator.parameter_names == ["p1", "p2"]
     assert isinstance(losses, pd.Series)
     assert len(losses) == 5
@@ -135,11 +135,11 @@ def test_train_torch_ss_estimator_with_custom_model(
     features, targets = ss_data
     model = SimpleModel(n_inputs=2, n_outputs=2)
 
-    estimator, losses = train_torch_steady_state(
-        features=features, targets=targets, epochs=5, approximator=model
+    estimator, losses = train_steady_state(
+        features=features, targets=targets, epochs=5, model=model
     )
 
-    assert isinstance(estimator, TorchSteadyState)
+    assert isinstance(estimator, SteadyState)
     assert estimator.model is model
     assert estimator.parameter_names == ["p1", "p2"]
     assert isinstance(losses, pd.Series)

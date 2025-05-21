@@ -9,9 +9,9 @@ from numpy import polynomial
 from mxlpy.types import AbstractSurrogate, ArrayLike, Derived
 
 __all__ = [
-    "Polynomial",
     "PolynomialExpansion",
-    "train_polynomial",
+    "Surrogate",
+    "train",
 ]
 
 # define custom type
@@ -26,7 +26,7 @@ PolynomialExpansion = (
 
 
 @dataclass(kw_only=True)
-class Polynomial(AbstractSurrogate):
+class Surrogate(AbstractSurrogate):
     model: PolynomialExpansion
 
     def predict_raw(self, y: np.ndarray) -> np.ndarray:
@@ -44,7 +44,7 @@ class Polynomial(AbstractSurrogate):
         )
 
 
-def train_polynomial(
+def train(
     feature: ArrayLike | pd.Series,
     target: ArrayLike | pd.Series,
     series: Literal[
@@ -54,7 +54,7 @@ def train_polynomial(
     surrogate_args: list[str] | None = None,
     surrogate_outputs: list[str] | None = None,
     surrogate_stoichiometries: dict[str, dict[str, float | Derived]] | None = None,
-) -> tuple[Polynomial, pd.DataFrame]:
+) -> tuple[Surrogate, pd.DataFrame]:
     """Train a surrogate model based on function series expansion.
 
     Args:
@@ -96,7 +96,7 @@ def train_polynomial(
     # Choose the model with the lowest AIC
     model = models[np.argmin(score)]
     return (
-        Polynomial(
+        Surrogate(
             model=model,
             args=surrogate_args if surrogate_args is not None else [],
             outputs=surrogate_outputs if surrogate_outputs is not None else [],

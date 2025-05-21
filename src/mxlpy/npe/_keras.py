@@ -1,38 +1,20 @@
-"""Neural Network Parameter Estimation (NPE) Module.
-
-This module provides classes and functions for training neural network models to estimate
-parameters in metabolic models. It includes functionality for both steady-state and
-time-series data.
-
-Functions:
-    train_torch_surrogate: Train a PyTorch surrogate model
-    train_torch_time_course_estimator: Train a PyTorch time course estimator
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Self, cast
+from typing import Self, cast
 
+import keras
 import numpy as np
 import pandas as pd
-import torch
-from torch import nn
-from torch.optim.adam import Adam
 
-from mxlpy.nn._torch import LSTM, MLP, DefaultDevice, train
+from mxlpy.nn._keras import LSTM, MLP, train
 from mxlpy.types import AbstractEstimator
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from torch.optim.optimizer import ParamsT
-
-
-type LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
-
 __all__ = [
+    "DefaultLoss",
+    "DefaultOptimizer",
     "LossFn",
+    "Optimizer",
     "SteadyState",
     "SteadyStateTrainer",
     "TimeCourse",
@@ -41,44 +23,38 @@ __all__ = [
     "train_time_course",
 ]
 
+type Optimizer = keras.optimizers.Optimizer | str
+type LossFn = keras.losses.Loss | str
 
-def _mean_abs(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Standard loss for surrogates.
-
-    Args:
-        x: Predictions of a model.
-        y: Targets.
-
-    Returns:
-        torch.Tensor: loss.
-
-    """
-    return torch.mean(torch.abs(x - y))
+DefaultOptimizer = keras.optimizers.Adam()
+DefaultLoss = keras.losses.MeanAbsoluteError()
 
 
 @dataclass(kw_only=True)
 class SteadyState(AbstractEstimator):
-    """Estimator for steady state data using PyTorch models."""
+    """Estimator for steady state data using Keras models."""
 
-    model: torch.nn.Module
+    model: keras.Model
 
     def predict(self, features: pd.Series | pd.DataFrame) -> pd.DataFrame:
         """Predict the target values for the given features."""
-        with torch.no_grad():
-            pred = self.model(torch.tensor(features.to_numpy(), dtype=torch.float32))
-            return pd.DataFrame(pred, columns=self.parameter_names)
+        return pd.DataFrame(
+            self.model.predict(features),
+            columns=self.parameter_names,
+            dtype=float,
+        )
 
 
 @dataclass(kw_only=True)
 class TimeCourse(AbstractEstimator):
-    """Estimator for time course data using PyTorch models."""
+    """Estimator for time course data using Keras models."""
 
-    model: torch.nn.Module
+    model: keras.Model
 
     def predict(self, features: pd.Series | pd.DataFrame) -> pd.DataFrame:
         """Predict the target values for the given features."""
         idx = cast(pd.MultiIndex, features.index)
-        features_ = torch.Tensor(
+        features_ = (
             np.swapaxes(
                 features.to_numpy().reshape(
                     (
@@ -91,20 +67,21 @@ class TimeCourse(AbstractEstimator):
                 axis2=1,
             ),
         )
-        with torch.no_grad():
-            pred = self.model(features_)
-            return pd.DataFrame(pred, columns=self.parameter_names)
+        return pd.DataFrame(
+            self.model.predict(features_),
+            columns=self.parameter_names,
+            dtype=float,
+        )
 
 
 @dataclass
 class SteadyStateTrainer:
-    """Trainer for steady state data using PyTorch models."""
+    """Trainer for steady state data using Keras models."""
 
     features: pd.DataFrame
     targets: pd.DataFrame
-    model: nn.Module
-    optimizer: Adam
-    device: torch.device
+    model: keras.Model
+    optimizer: Optimizer
     losses: list[pd.Series]
     loss_fn: LossFn
 
@@ -112,10 +89,9 @@ class SteadyStateTrainer:
         self,
         features: pd.DataFrame,
         targets: pd.DataFrame,
-        model: nn.Module | None = None,
-        optimizer_cls: Callable[[ParamsT], Adam] = Adam,
-        device: torch.device = DefaultDevice,
-        loss_fn: LossFn = _mean_abs,
+        model: keras.Model | None = None,
+        optimizer: Optimizer = DefaultOptimizer,
+        loss: LossFn = DefaultLoss,
     ) -> None:
         """Initialize the trainer with features, targets, and model.
 
@@ -123,9 +99,8 @@ class SteadyStateTrainer:
             features: DataFrame containing the input features for training
             targets: DataFrame containing the target values for training
             model: Predefined neural network model (None to use default MLP)
-            optimizer_cls: Optimizer class to use for training (default: Adam)
-            device: Device to run the training on (default: DefaultDevice)
-            loss_fn: Loss function
+            optimizer: Optimizer class to use for training (default: Adam)
+            loss: Loss function
 
         """
         self.features = features
@@ -138,10 +113,10 @@ class SteadyStateTrainer:
                 n_inputs=len(features.columns),
                 neurons_per_layer=[n_hidden, n_hidden, n_outputs],
             )
-        self.model = model.to(device)
-        self.optimizer = optimizer_cls(model.parameters())
-        self.device = device
-        self.loss_fn = loss_fn
+        self.model = model
+        model.compile(optimizer=cast(str, optimizer), loss=loss)
+
+        self.loss_fn = loss
         self.losses = []
 
     def train(
@@ -158,13 +133,10 @@ class SteadyStateTrainer:
         """
         losses = train(
             model=self.model,
-            features=self.features.to_numpy(),
-            targets=self.targets.to_numpy(),
+            features=self.features,
+            targets=self.targets,
             epochs=epochs,
-            optimizer=self.optimizer,
             batch_size=batch_size,
-            loss_fn=self.loss_fn,
-            device=self.device,
         )
 
         if len(self.losses) > 0:
@@ -186,13 +158,13 @@ class SteadyStateTrainer:
 
 @dataclass
 class TimeCourseTrainer:
-    """Trainer for time course data using PyTorch models."""
+    """Trainer for time course data using Keras models."""
 
     features: pd.DataFrame
     targets: pd.DataFrame
-    model: nn.Module
-    optimizer: Adam
-    device: torch.device
+    model: keras.Model
+    optimizer: Optimizer
+
     losses: list[pd.Series]
     loss_fn: LossFn
 
@@ -200,10 +172,9 @@ class TimeCourseTrainer:
         self,
         features: pd.DataFrame,
         targets: pd.DataFrame,
-        model: nn.Module | None = None,
-        optimizer_cls: Callable[[ParamsT], Adam] = Adam,
-        device: torch.device = DefaultDevice,
-        loss_fn: LossFn = _mean_abs,
+        model: keras.Model | None = None,
+        optimizer: Optimizer = DefaultOptimizer,
+        loss: LossFn = DefaultLoss,
     ) -> None:
         """Initialize the trainer with features, targets, and model.
 
@@ -211,9 +182,8 @@ class TimeCourseTrainer:
             features: DataFrame containing the input features for training
             targets: DataFrame containing the target values for training
             model: Predefined neural network model (None to use default LSTM)
-            optimizer_cls: Optimizer class to use for training (default: Adam)
-            device: Device to run the training on (default: DefaultDevice)
-            loss_fn: Loss function
+            optimizer: Optimizer class to use for training
+            loss: Loss function
 
         """
         self.features = features
@@ -224,11 +194,9 @@ class TimeCourseTrainer:
                 n_inputs=len(features.columns),
                 n_outputs=len(targets.columns),
                 n_hidden=1,
-            ).to(device)
-        self.model = model.to(device)
-        self.optimizer = optimizer_cls(model.parameters())
-        self.device = device
-        self.loss_fn = loss_fn
+            )
+        self.model = model
+        model.compile(optimizer=cast(str, optimizer), loss=loss)
         self.losses = []
 
     def train(
@@ -252,12 +220,9 @@ class TimeCourseTrainer:
                 axis1=0,
                 axis2=1,
             ),
-            targets=self.targets.to_numpy(),
+            targets=self.targets,
             epochs=epochs,
-            optimizer=self.optimizer,
             batch_size=batch_size,
-            loss_fn=self.loss_fn,
-            device=self.device,
         )
 
         if len(self.losses) > 0:
@@ -282,18 +247,18 @@ def train_steady_state(
     targets: pd.DataFrame,
     epochs: int,
     batch_size: int | None = None,
-    model: nn.Module | None = None,
-    optimizer_cls: Callable[[ParamsT], Adam] = Adam,
-    device: torch.device = DefaultDevice,
+    model: keras.Model | None = None,
+    optimizer: Optimizer = DefaultOptimizer,
+    loss: LossFn = DefaultLoss,
 ) -> tuple[SteadyState, pd.Series]:
-    """Train a PyTorch steady state estimator.
+    """Train a Keras steady state estimator.
 
     This function trains a neural network model to estimate steady state data
     using the provided features and targets. It supports both full-batch and
     mini-batch training.
 
     Examples:
-        >>> train_torch_ss_estimator(features, targets, epochs=100)
+        >>> train_keras_ss_estimator(features, targets, epochs=100)
 
     Args:
         features: DataFrame containing the input features for training
@@ -301,19 +266,19 @@ def train_steady_state(
         epochs: Number of training epochs
         batch_size: Size of mini-batches for training (None for full-batch)
         model: Predefined neural network model (None to use default MLP)
-        optimizer_cls: Optimizer class to use for training (default: Adam)
-        device: Device to run the training on (default: DefaultDevice)
+        optimizer: Optimizer class to use for training (default: Adam)
+        loss: Loss function for the training
 
     Returns:
-        tuple[TorchTimeSeriesEstimator, pd.Series]: Trained estimator and loss history
+        tuple[KerasTimeSeriesEstimator, pd.Series]: Trained estimator and loss history
 
     """
     trainer = SteadyStateTrainer(
         features=features,
         targets=targets,
         model=model,
-        optimizer_cls=optimizer_cls,
-        device=device,
+        optimizer=optimizer,
+        loss=loss,
     ).train(epochs=epochs, batch_size=batch_size)
 
     return trainer.get_estimator(), trainer.get_loss()
@@ -324,18 +289,18 @@ def train_time_course(
     targets: pd.DataFrame,
     epochs: int,
     batch_size: int | None = None,
-    model: nn.Module | None = None,
-    optimizer_cls: Callable[[ParamsT], Adam] = Adam,
-    device: torch.device = DefaultDevice,
+    model: keras.Model | None = None,
+    optimizer: Optimizer = DefaultOptimizer,
+    loss: LossFn = DefaultLoss,
 ) -> tuple[TimeCourse, pd.Series]:
-    """Train a PyTorch time course estimator.
+    """Train a Keras time course estimator.
 
     This function trains a neural network model to estimate time course data
     using the provided features and targets. It supports both full-batch and
     mini-batch training.
 
     Examples:
-        >>> train_torch_time_course_estimator(features, targets, epochs=100)
+        >>> train_keras_time_course_estimator(features, targets, epochs=100)
 
     Args:
         features: DataFrame containing the input features for training
@@ -343,19 +308,19 @@ def train_time_course(
         epochs: Number of training epochs
         batch_size: Size of mini-batches for training (None for full-batch)
         model: Predefined neural network model (None to use default LSTM)
-        optimizer_cls: Optimizer class to use for training (default: Adam)
-        device: Device to run the training on (default: DefaultDevice)
+        optimizer: Optimizer class to use for training (default: Adam)
+        loss: Loss function for the training
 
     Returns:
-        tuple[TorchTimeSeriesEstimator, pd.Series]: Trained estimator and loss history
+        tuple[KerasTimeSeriesEstimator, pd.Series]: Trained estimator and loss history
 
     """
     trainer = TimeCourseTrainer(
         features=features,
         targets=targets,
         model=model,
-        optimizer_cls=optimizer_cls,
-        device=device,
+        optimizer=optimizer,
+        loss=loss,
     ).train(epochs=epochs, batch_size=batch_size)
 
     return trainer.get_estimator(), trainer.get_loss()

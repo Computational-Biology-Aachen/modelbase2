@@ -4,31 +4,30 @@ This module provides classes and functions for creating and training surrogate m
 for metabolic simulations. It includes functionality for both steady-state and time-series
 data using neural networks.
 
-Classes:
-    AbstractSurrogate: Abstract base class for surrogate models.
-    TorchSurrogate: Surrogate model using PyTorch.
-    Approximator: Neural network approximator for surrogate modeling.
-
-Functions:
-    train_torch_surrogate: Train a PyTorch surrogate model.
-    train_torch_time_course_estimator: Train a PyTorch time course estimator.
 """
 
 from __future__ import annotations
 
 import contextlib
+from typing import TYPE_CHECKING
 
 with contextlib.suppress(ImportError):
-    from ._torch import Torch, TorchTrainer, train_torch
+    if TYPE_CHECKING:
+        from . import _keras as keras
+        from . import _torch as torch
+    else:
+        from lazy_import import lazy_module
 
-from ._poly import Polynomial, train_polynomial
-from ._qss import QSS
+        keras = lazy_module("mxlpy.surrogates._keras")
+        torch = lazy_module("mxlpy.surrogates._torch")
+
+
+from . import _poly as poly
+from . import _qss as qss
 
 __all__ = [
-    "Polynomial",
-    "QSS",
-    "Torch",
-    "TorchTrainer",
-    "train_polynomial",
-    "train_torch",
+    "keras",
+    "poly",
+    "qss",
+    "torch",
 ]
