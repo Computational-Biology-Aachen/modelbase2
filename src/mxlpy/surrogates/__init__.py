@@ -8,18 +8,25 @@ data using neural networks.
 
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 
-with contextlib.suppress(ImportError):
-    if TYPE_CHECKING:
+if TYPE_CHECKING:
+    import contextlib
+
+    with contextlib.suppress(ImportError):
         from . import _keras as keras
         from . import _torch as torch
-    else:
-        from lazy_import import lazy_module
+else:
+    from lazy_import import lazy_module
 
-        keras = lazy_module("mxlpy.surrogates._keras")
-        torch = lazy_module("mxlpy.surrogates._torch")
+    keras = lazy_module(
+        "mxlpy.surrogates._keras",
+        error_strings={"module": "keras", "install_name": "mxlpy[tf]"},
+    )
+    torch = lazy_module(
+        "mxlpy.surrogates._torch",
+        error_strings={"module": "torch", "install_name": "mxlpy[torch]"},
+    )
 
 
 from . import _poly as poly
