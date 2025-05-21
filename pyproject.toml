@@ -51,9 +51,16 @@ dependencies = [
   "tqdm>=4.66.6",
   "typing-extensions>=4.12.2",
 ]
-optional-dependencies = { torch = [
+[project.optional-dependencies]
+torch = [
   "torch>=2.5.1",
-], dev = [
+]
+tf = [
+  "tensorflow>=2.19.0",
+]
+
+[dependency-groups]
+dev = [
   "toml-sort>=0.23.1,<0.24",
   "ruff>=0.7.1",
   "coverage>=7.6.4",
@@ -67,9 +74,7 @@ optional-dependencies = { torch = [
   "pre-commit>=4.0.1",
   "pyright>=1.1.387",
   "ssort>=0.13.0",
-], tf = [
-  "tensorflow>=2.19.0",
-] }
+]
 
 [tool.bandit]
 skips = ["B101", "B301", "B403", "B404", "B603", "B607"]

@@ -1567,6 +1567,14 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+tf = [
+    { name = "tensorflow" },
+]
+torch = [
+    { name = "torch" },
+]
+
+[package.dev-dependencies]
 dev = [
     { name = "coverage" },
     { name = "jupyter" },
@@ -1582,51 +1590,49 @@ dev = [
     { name = "ssort" },
     { name = "toml-sort" },
 ]
-tf = [
-    { name = "tensorflow" },
-]
-torch = [
-    { name = "torch" },
-]
 
 [package.metadata]
 requires-dist = [
-    { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.6.4" },
     { name = "dill", specifier = ">=0.3.9" },
-    { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.1.1" },
     { name = "latexify-py", specifier = ">=0.4.4" },
     { name = "matplotlib", specifier = ">=3.9.2" },
     { name = "mike", specifier = ">=2.1.3" },
-    { name = "mkdocs", marker = "extra == 'dev'", specifier = ">=1.6.1" },
-    { name = "mkdocs-jupyter", marker = "extra == 'dev'", specifier = ">=0.25.1" },
-    { name = "mkdocs-material", marker = "extra == 'dev'", specifier = ">=9.5.42" },
     { name = "more-itertools", specifier = ">=10.5.0" },
     { name = "numpy", specifier = ">=2.1.2" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "parameteriser", specifier = ">=0.1.0" },
     { name = "pebble", specifier = ">=5.0.7" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.0.1" },
-    { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1.387" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.3" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "python-libsbml", specifier = ">=5.20.4" },
-    { name = "requests", marker = "extra == 'dev'", specifier = ">=2.32.3" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7.1" },
     { name = "salib", specifier = ">=1.5.1" },
     { name = "scipy", specifier = ">=1.14.1" },
     { name = "seaborn", specifier = ">=0.13.2" },
-    { name = "ssort", marker = "extra == 'dev'", specifier = ">=0.13.0" },
     { name = "symbtools", specifier = ">=0.4.0" },
     { name = "sympy", specifier = ">=1.13.1" },
     { name = "tabulate", specifier = ">=0.9.0" },
     { name = "tensorflow", marker = "extra == 'tf'", specifier = ">=2.19.0" },
     { name = "toml", specifier = ">=0.10.2" },
-    { name = "toml-sort", marker = "extra == 'dev'", specifier = ">=0.23.1,<0.24" },
     { name = "torch", marker = "extra == 'torch'", specifier = ">=2.5.1" },
     { name = "tqdm", specifier = ">=4.66.6" },
     { name = "typing-extensions", specifier = ">=4.12.2" },
 ]
-provides-extras = ["torch", "dev", "tf"]
+provides-extras = ["torch", "tf"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "coverage", specifier = ">=7.6.4" },
+    { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-jupyter", specifier = ">=0.25.1" },
+    { name = "mkdocs-material", specifier = ">=9.5.42" },
+    { name = "pre-commit", specifier = ">=4.0.1" },
+    { name = "pyright", specifier = ">=1.1.387" },
+    { name = "pytest", specifier = ">=8.3.3" },
+    { name = "pytest-cov", specifier = ">=5.0.0" },
+    { name = "requests", specifier = ">=2.32.3" },
+    { name = "ruff", specifier = ">=0.7.1" },
+    { name = "ssort", specifier = ">=0.13.0" },
+    { name = "toml-sort", specifier = ">=0.23.1,<0.24" },
+]
 
 [[package]]
 name = "namex"
