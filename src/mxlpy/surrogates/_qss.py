@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 __all__ = ["QSSFn", "Surrogate"]
 
-type QSSFn = Callable[..., Array]
+type QSSFn = Callable[..., Iterable[float] | Array]
 
 
 @dataclass(kw_only=True)
