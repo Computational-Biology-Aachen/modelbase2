@@ -4444,8 +4444,8 @@ packages:
   requires_python: '>=3.8'
 - pypi: .
   name: mxlpy
-  version: 0.19.0
-  sha256: 4a63c125e11c64ce920e6a22fd60c07967c44a5b4b051616af935d856dd60474
+  version: 0.20.0
+  sha256: 33344e91d27966e4b662f8591300e9201829d7477431d5b18109b1ea7c3225a3
   requires_dist:
   - dill>=0.3.9
   - latexify-py>=0.4.4
