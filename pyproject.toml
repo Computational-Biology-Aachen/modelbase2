@@ -56,8 +56,11 @@ dependencies = [
 torch = [
   "torch>=2.5.1",
 ]
-tf = [
+tensorflow = [
   "tensorflow>=2.19.0",
+]
+keras = [
+  "keras>=3.9.2",
 ]
 
 [dependency-groups]

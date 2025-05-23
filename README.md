@@ -19,14 +19,24 @@
 
 You can install mxlpy using pip: `pip install mxlpy`.
 
-Due to their sizes, the machine learning are optinoal dependencies. You cann install them using `pip install mxlpy[torch,tf]`.
+Due to their sizes, the machine learning are optional dependencies. You cann install them using
+
+```shell
+# One of them respectively
+pip install mxlpy[torch]
+pip install mxlpy[tensorflow]
+pip install mxlpy[keras]
+
+# together
+pip install mxlpy[torch, tensorflow, keras]
+```
 
 If you want access to the sundials solver suite via the [assimulo](https://jmodelica.org/assimulo/) package, we recommend setting up a virtual environment via [pixi](https://pixi.sh/) or [mamba / conda](https://mamba.readthedocs.io/en/latest/) using the [conda-forge](https://conda-forge.org/) channel.
 
 ```bash
 pixi init
 pixi add python assimulo
-pixi add --pypi mxlpy[torch]
+pixi add --pypi mxlpy
 ```
 
 ## How to cite
@@ -44,7 +54,7 @@ You have two choices here, using `uv` (pypi-only) or using `pixi` (conda-forge, 
 ### uv
 
 - Install `uv` as described in [the docs](https://docs.astral.sh/uv/getting-started/installation/).
-- Run `uv sync --extra dev --extra torch` to install dependencies locally
+- Run `uv sync --all-extras --all-groups` to install dependencies locally
 
 ### pixi
 
@@ -52,7 +62,3 @@ You have two choices here, using `uv` (pypi-only) or using `pixi` (conda-forge, 
 - Run `pixi install --frozen`
 
 
-## Notes
-
-- `uv add $package`
-- `uv add --optional dev $package`

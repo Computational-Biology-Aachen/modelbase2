@@ -1577,7 +1577,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-tf = [
+keras = [
+    { name = "keras" },
+]
+tensorflow = [
     { name = "tensorflow" },
 ]
 torch = [
@@ -1604,6 +1607,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "dill", specifier = ">=0.3.9" },
+    { name = "keras", marker = "extra == 'keras'", specifier = ">=3.9.2" },
     { name = "latexify-py", specifier = ">=0.4.4" },
     { name = "lazy-import", specifier = ">=0.2.2" },
     { name = "matplotlib", specifier = ">=3.9.2" },
@@ -1620,13 +1624,13 @@ requires-dist = [
     { name = "symbtools", specifier = ">=0.4.0" },
     { name = "sympy", specifier = ">=1.13.1" },
     { name = "tabulate", specifier = ">=0.9.0" },
-    { name = "tensorflow", marker = "extra == 'tf'", specifier = ">=2.19.0" },
+    { name = "tensorflow", marker = "extra == 'tensorflow'", specifier = ">=2.19.0" },
     { name = "toml", specifier = ">=0.10.2" },
     { name = "torch", marker = "extra == 'torch'", specifier = ">=2.5.1" },
     { name = "tqdm", specifier = ">=4.66.6" },
     { name = "typing-extensions", specifier = ">=4.12.2" },
 ]
-provides-extras = ["torch", "tf"]
+provides-extras = ["torch", "tensorflow", "keras"]
 
 [package.metadata.requires-dev]
 dev = [
