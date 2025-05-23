@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 from mxlpy.fns import (
@@ -189,26 +188,3 @@ def test_diffusion_1s_1p() -> None:
     assert diffusion_1s_1p(10.0, 5.0, 2.0) == -10.0
     assert diffusion_1s_1p(5.0, 5.0, 2.0) == 0.0
     assert diffusion_1s_1p(5.0, 10.0, 0.0) == 0.0
-
-
-def test_with_numpy_arrays() -> None:
-    """Test functions with numpy arrays."""
-    x = np.array([1.0, 2.0, 3.0])
-    y = np.array([4.0, 5.0, 6.0])
-
-    # Test basic operations
-    np.testing.assert_array_equal(constant(x), x)
-    np.testing.assert_array_equal(neg(x), -x)
-    np.testing.assert_array_equal(minus(x, y), x - y)
-    np.testing.assert_array_equal(mul(x, y), x * y)
-    np.testing.assert_array_equal(div(x, y), x / y)
-    np.testing.assert_array_equal(add(x, y), x + y)
-    np.testing.assert_array_equal(twice(x), x * 2)
-    np.testing.assert_array_equal(proportional(x, y), x * y)
-
-    # Test more complex functions
-    x_total = 10.0
-    np.testing.assert_array_equal(moiety_1s(x, x_total), x_total - x)
-
-    k = 2.0
-    np.testing.assert_array_equal(mass_action_1s(x, k), k * x)

@@ -5,7 +5,6 @@ import sympy
 ##############################
 from mxlpy.fns import mass_action_1s
 from mxlpy.meta.source_tools import fn_to_sympy
-from mxlpy.types import Float
 
 
 def power(x: float) -> float:
@@ -283,7 +282,7 @@ def test_fn_call_sub() -> None:
 
 
 def test_fn_call_outside_file() -> None:
-    def fn(a: Float, b: Float) -> Float:
+    def fn(a: float, b: float) -> float:
         return mass_action_1s(a, b)
 
     a, b = sympy.symbols("a b")

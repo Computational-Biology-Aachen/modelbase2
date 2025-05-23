@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from mxlpy.types import Float
-
 __all__ = [
     "add",
     "constant",
@@ -36,7 +31,7 @@ __all__ = [
 ###############################################################################
 
 
-def constant(x: Float) -> Float:
+def constant(x: float) -> float:
     """Return a constant value regardless of other model components.
 
     Parameters
@@ -58,7 +53,7 @@ def constant(x: Float) -> Float:
     return x
 
 
-def neg(x: Float) -> Float:
+def neg(x: float) -> float:
     """Calculate the negation of a value.
 
     Parameters
@@ -82,7 +77,7 @@ def neg(x: Float) -> Float:
     return -x
 
 
-def minus(x: Float, y: Float) -> Float:
+def minus(x: float, y: float) -> float:
     """Calculate the difference between two values.
 
     Parameters
@@ -108,7 +103,7 @@ def minus(x: Float, y: Float) -> Float:
     return x - y
 
 
-def mul(x: Float, y: Float) -> Float:
+def mul(x: float, y: float) -> float:
     """Calculate the product of two values.
 
     Parameters
@@ -134,7 +129,7 @@ def mul(x: Float, y: Float) -> Float:
     return x * y
 
 
-def div(x: Float, y: Float) -> Float:
+def div(x: float, y: float) -> float:
     """Calculate the quotient of two values.
 
     Parameters
@@ -160,7 +155,7 @@ def div(x: Float, y: Float) -> Float:
     return x / y
 
 
-def one_div(x: Float) -> Float:
+def one_div(x: float) -> float:
     """Calculate the reciprocal of a value.
 
     Parameters
@@ -184,7 +179,7 @@ def one_div(x: Float) -> Float:
     return 1.0 / x
 
 
-def neg_div(x: Float, y: Float) -> Float:
+def neg_div(x: float, y: float) -> float:
     """Calculate the negative quotient of two values.
 
     Parameters
@@ -210,7 +205,7 @@ def neg_div(x: Float, y: Float) -> Float:
     return -x / y
 
 
-def twice(x: Float) -> Float:
+def twice(x: float) -> float:
     """Calculate twice the value.
 
     Parameters
@@ -234,7 +229,7 @@ def twice(x: Float) -> Float:
     return x * 2
 
 
-def add(x: Float, y: Float) -> Float:
+def add(x: float, y: float) -> float:
     """Calculate the sum of two values.
 
     Parameters
@@ -260,7 +255,7 @@ def add(x: Float, y: Float) -> Float:
     return x + y
 
 
-def proportional(x: Float, y: Float) -> Float:
+def proportional(x: float, y: float) -> float:
     """Calculate the product of two values.
 
     Common in mass-action kinetics where x represents a rate constant
@@ -295,9 +290,9 @@ def proportional(x: Float, y: Float) -> Float:
 
 
 def moiety_1s(
-    x: Float,
-    x_total: Float,
-) -> Float:
+    x: float,
+    x_total: float,
+) -> float:
     """Calculate conservation relationship for one substrate.
 
     Used for creating derived variables that represent moiety conservation,
@@ -328,10 +323,10 @@ def moiety_1s(
 
 
 def moiety_2s(
-    x1: Float,
-    x2: Float,
-    x_total: Float,
-) -> Float:
+    x1: float,
+    x2: float,
+    x_total: float,
+) -> float:
     """Calculate conservation relationship for two substrates.
 
     Used for creating derived variables that represent moiety conservation
@@ -369,7 +364,7 @@ def moiety_2s(
 ###############################################################################
 
 
-def mass_action_1s(s1: Float, k: Float) -> Float:
+def mass_action_1s(s1: float, k: float) -> float:
     """Calculate irreversible mass action reaction rate with one substrate.
 
     Rate = k * [S]
@@ -398,7 +393,7 @@ def mass_action_1s(s1: Float, k: Float) -> Float:
     return k * s1
 
 
-def mass_action_1s_1p(s1: Float, p1: Float, kf: Float, kr: Float) -> Float:
+def mass_action_1s_1p(s1: float, p1: float, kf: float, kr: float) -> float:
     """Calculate reversible mass action reaction rate with one substrate and one product.
 
     Rate = kf * [S] - kr * [P]
@@ -432,7 +427,7 @@ def mass_action_1s_1p(s1: Float, p1: Float, kf: Float, kr: Float) -> Float:
     return kf * s1 - kr * p1
 
 
-def mass_action_2s(s1: Float, s2: Float, k: Float) -> Float:
+def mass_action_2s(s1: float, s2: float, k: float) -> float:
     """Calculate irreversible mass action reaction rate with two substrates.
 
     Rate = k * [S1] * [S2]
@@ -463,7 +458,7 @@ def mass_action_2s(s1: Float, s2: Float, k: Float) -> Float:
     return k * s1 * s2
 
 
-def mass_action_2s_1p(s1: Float, s2: Float, p1: Float, kf: Float, kr: Float) -> Float:
+def mass_action_2s_1p(s1: float, s2: float, p1: float, kf: float, kr: float) -> float:
     """Calculate reversible mass action reaction rate with two substrates and one product.
 
     Rate = kf * [S1] * [S2] - kr * [P]
@@ -505,7 +500,7 @@ def mass_action_2s_1p(s1: Float, s2: Float, p1: Float, kf: Float, kr: Float) -> 
 ###############################################################################
 
 
-def michaelis_menten_1s(s1: Float, vmax: Float, km1: Float) -> Float:
+def michaelis_menten_1s(s1: float, vmax: float, km1: float) -> float:
     """Calculate irreversible Michaelis-Menten reaction rate for one substrate.
 
     Rate = Vmax * [S] / (Km + [S])
@@ -549,12 +544,12 @@ def michaelis_menten_1s(s1: Float, vmax: Float, km1: Float) -> Float:
 
 
 def michaelis_menten_2s(
-    s1: Float,
-    s2: Float,
-    vmax: Float,
-    km1: Float,
-    km2: Float,
-) -> Float:
+    s1: float,
+    s2: float,
+    vmax: float,
+    km1: float,
+    km2: float,
+) -> float:
     """Calculate Michaelis-Menten reaction rate (ping-pong) for two substrates.
 
     Rate = Vmax * [S1] * [S2] / ([S1]*[S2] + km1*[S2] + km2*[S1])
@@ -594,14 +589,14 @@ def michaelis_menten_2s(
 
 
 def michaelis_menten_3s(
-    s1: Float,
-    s2: Float,
-    s3: Float,
-    vmax: Float,
-    km1: Float,
-    km2: Float,
-    km3: Float,
-) -> Float:
+    s1: float,
+    s2: float,
+    s3: float,
+    vmax: float,
+    km1: float,
+    km2: float,
+    km3: float,
+) -> float:
     """Calculate Michaelis-Menten reaction rate (ping-pong) for three substrates.
 
     Rate = Vmax * [S1] * [S2] * [S3] / ([S1]*[S2] + km1*[S2]*[S3] + km2*[S1]*[S3] + km3*[S1]*[S2])
@@ -649,7 +644,7 @@ def michaelis_menten_3s(
 ###############################################################################
 
 
-def diffusion_1s_1p(inside: Float, outside: Float, k: Float) -> Float:
+def diffusion_1s_1p(inside: float, outside: float, k: float) -> float:
     """Calculate diffusion rate between two compartments.
 
     Rate = k * ([outside] - [inside])

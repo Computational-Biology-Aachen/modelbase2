@@ -6,18 +6,17 @@ import mxlpy
 from mxlpy import fns
 from mxlpy.fns import mass_action_1s
 from mxlpy.meta.source_tools import fn_to_sympy
-from mxlpy.types import Float
 
 
-def using_inner_l1(x: Float, y: Float) -> Float:
+def using_inner_l1(x: float, y: float) -> float:
     return mass_action_1s(x, y) + y
 
 
-def using_inner_l2(x: Float, y: Float) -> Float:
+def using_inner_l2(x: float, y: float) -> float:
     return fns.mass_action_1s(x, y) + y
 
 
-def using_inner_l3(x: Float, y: Float) -> Float:
+def using_inner_l3(x: float, y: float) -> float:
     return mxlpy.fns.mass_action_1s(x, y) + y
 
 

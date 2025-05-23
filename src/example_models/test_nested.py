@@ -2,12 +2,11 @@
 
 from mxlpy import Model
 from mxlpy.fns import constant
-from mxlpy.types import Float
 
 __all__ = ["get_model", "wrapper"]
 
 
-def wrapper(x: Float) -> Float:
+def wrapper(x: float) -> float:
     """Wrapper function to call a constant function."""
     return constant(x)
 

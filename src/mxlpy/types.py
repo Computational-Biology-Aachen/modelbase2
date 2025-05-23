@@ -27,7 +27,6 @@ __all__ = [
     "Array",
     "ArrayLike",
     "Derived",
-    "Float",
     "IntegratorProtocol",
     "IntegratorType",
     "McSteadyStates",
@@ -50,11 +49,9 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
 from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar, cast
 
 import numpy as np
-import numpy.typing as npt
 from numpy.typing import NDArray
 
-type Float = npt.NDArray[np.floating[Any]] | float
-type RateFn = Callable[..., Float]
+type RateFn = Callable[..., float]
 type Array = NDArray[np.floating[Any]]
 type ArrayLike = NDArray[np.floating[Any]] | list[float]
 
