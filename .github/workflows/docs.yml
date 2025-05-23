@@ -34,7 +34,7 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - run: uv sync --extra dev --extra torch
+      - run: uv sync --all-extras --all-groups
       - run: uv run python -c "import toml;print('VERSION={}'.format(toml.load(open('pyproject.toml'))['project']['version']))" >> $GITHUB_ENV
       - run: uv run mike deploy --update-aliases --push ${{ env.VERSION }} latest
       - run: uv run mike set-default --push latest
